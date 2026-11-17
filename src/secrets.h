@@ -1,7 +1,7 @@
 #pragma once
 // ===== Zugangsdaten & Netzwerk =====
-#define WIFI_SSID   "FRITZ!Box 7490"
-#define WIFI_PASS   "196019592004"
+#define WIFI_SSID   "MyRouter"
+#define WIFI_PASS   "12345674"
  
 // 0 = DHCP (IP-Reservierung in der Fritzbox), 1 = feste IP im ESP32
 #define USE_STATIC_IP  0
