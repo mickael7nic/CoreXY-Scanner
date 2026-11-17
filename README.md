@@ -1,4 +1,4 @@
-![Doku](scanner-system.svg)
+![Mein Projekt-Logo](DOKU/scanner-system.svg)
 # CoreXY Laser-Oberflächenscanner
 
 **Ein Laser tastet ein Teil Punkt für Punkt ab – heraus kommt ein fertiges 3D-Modell für CAD, 3D-Druck oder Laser, bedient komplett aus dem Browser.**
