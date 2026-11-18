@@ -241,6 +241,8 @@ Unter dem Fortschrittsbalken: Fortschritt in Prozent (groß, rot), **Start**, **
 
 Höhenbild des Scans (blau = tief, rot = hoch, grau = leer), während des Scans laufend aktualisiert. Es werden nur neu fertige Zeilen nachgeladen. Mit „Nur Teil anzeigen“ werden Z-Null, Mindesthöhe und Glättung aus den Export-Einstellungen angewendet.
 
+**Spiegeln:** „↔ Horizontal spiegeln“ tauscht links/rechts (X), „↕ Vertikal spiegeln“ oben/unten (Y). Die Spiegelung wirkt auf Vorschau und alle Exporte; die gespeicherten Messdaten bleiben unverändert. Ein erneuter Klick hebt sie auf, ein neuer Scan setzt sie zurück.
+
 # Export
 
 ## Einstellungen
