@@ -28,6 +28,8 @@ details[open] summary{margin-bottom:6px}
 .pbw span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;text-shadow:0 0 3px #000}
 #bpause{min-width:80px}
 #big{font-size:72px;font-weight:800;color:#ff2a2a;text-align:center;line-height:1.1;margin:6px 0;font-variant-numeric:tabular-nums}
+#tip{position:fixed;z-index:50;max-width:330px;background:#0f1215;color:#e6e6e6;border:1px solid #2d6cdf;border-radius:6px;padding:7px 10px;font-size:12.5px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.55);pointer-events:none;display:none}
+[data-tip]{cursor:help}
 #msg{color:#ffb347;min-height:1.2em;font-size:13px}.wide{grid-column:1/-1}
 </style></head><body>
 <div class="bar"><b>CoreXY Scanner</b><span id="bstate">-</span><span id="bpos">-</span><button id="bpause" class="gr" onclick="cmd('/api/pause')" style="margin-left:auto">PAUSE</button><button class="red" style="margin-left:0" onclick="cmd('/api/stop')">STOP</button></div>
@@ -120,6 +122,9 @@ details[open] summary{margin-bottom:6px}
 <label style="justify-content:flex-start">Nur Teil anzeigen (Z-Null/Schwelle aus Export)<input id="pv" type="checkbox" onchange="draw()"></label>
 <canvas id="cv" width="10" height="10"></canvas><div id="leg" class="kv"></div>
 <button class="gr" onclick="loadData()">Daten neu laden</button>
+<button class="gr" onclick="flip('x')" title="Links und rechts tauschen (X spiegeln)">↔ Horizontal spiegeln</button>
+<button class="gr" onclick="flip('y')" title="Oben und unten tauschen (Y spiegeln)">↕ Vertikal spiegeln</button>
+<span id="flipI" style="color:#ffb347;font-size:13px;margin-left:6px"></span>
 </section>
 </main>
 <script>
@@ -129,7 +134,7 @@ const fx=(v,n=3)=>v==null||!isFinite(v)?'–':(+v).toFixed(n);
 function msg(t){$('msg').textContent=t||'';}
 async function cmd(u){try{const r=await fetch(u,{method:'POST'});const t=await r.text();if(!r.ok)throw new Error(t);msg('');}catch(e){msg(e.message);}}
 function jog(sx,sy){const s=+$('js').value;cmd(`/api/jog?dx=${sx*s}&dy=${sy*s}&f=${$('jf').value}`);}
-function startScan(){const q=['w','h','res','feed','travel','settle','avg'].map(k=>k+'='+encodeURIComponent($(k).value)).join('&')+'&bidir='+($('bidir').checked?1:0)+'&fly='+($('fly').checked?1:0)+'&lat='+encodeURIComponent($('lat').value);grid=null;cmd('/api/scan?'+q);}
+function startScan(){flipX=flipY=false;const q=['w','h','res','feed','travel','settle','avg'].map(k=>k+'='+encodeURIComponent($(k).value)).join('&')+'&bidir='+($('bidir').checked?1:0)+'&fly='+($('fly').checked?1:0)+'&lat='+encodeURIComponent($('lat').value);grid=null;cmd('/api/scan?'+q);}
 function frame(){cmd(`/api/frame?w=${encodeURIComponent($('w').value)}&h=${encodeURIComponent($('h').value)}&f=${encodeURIComponent($('travel').value)}`);}
 // Zeiten: ESP liefert Laufzeit (el) und Zeit seit Ende (ago), Uhrzeit rechnet der Browser
 const clk=ms=>new Date(ms).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'});
@@ -165,7 +170,8 @@ function est(){const w=+$('w').value,h=+$('h').value,r=+$('res').value;if(!(r>0)
 async function poll(){
  try{const r=await fetch('/api/status');st=await r.json();
   const sn=st.state+(st.partial&&st.state==='DONE'?' (abgebrochen)':'');$('state').textContent=sn;$('bstate').textContent=sn;
-  const zl=zP&&st.dist!=null?zP[0]*st.x+zP[1]*st.y+zP[2]-st.dist:NaN;
+  const gx=grid&&flipX?(grid.nx-1)*grid.res-st.x:st.x,gy=grid&&flipY?(grid.ny-1)*grid.res-st.y:st.y;   // Live-Z bei gespiegelter Ansicht
+  const zl=zP&&st.dist!=null?zP[0]*gx+zP[1]*gy+zP[2]-st.dist:NaN;
   $('bpos').textContent='X '+fx(st.x,2)+'  Y '+fx(st.y,2)+'  Z '+fx(zl,2);
   $('pos').textContent=fx(st.x)+' / '+fx(st.y)+' mm';
   $('dist').textContent=st.dist==null?'ungültig / kein Objekt':fx(st.dist)+' mm';
@@ -185,12 +191,18 @@ async function poll(){
  est();setTimeout(poll,500);}
 // lädt nur neue Zeilen nach (Server liefert Zeilen ab 'from')
 async function loadData(){lastFetch=Date.now();try{const nx=st.nx,ny=st.ny,res=st.res;if(!nx||!ny)return;
- if(!grid||grid.nx!==nx||grid.ny!==ny||grid.res!==res||(st.rows??0)<grid.rows)grid={nx,ny,res,d:new Float32Array(nx*ny).fill(NaN),rows:0};
+ if(!grid||grid.nx!==nx||grid.ny!==ny||grid.res!==res||(st.rows??0)<grid.rows)grid={nx,ny,res,raw:new Float32Array(nx*ny).fill(NaN),d:new Float32Array(nx*ny).fill(NaN),rows:0};
  const r=await fetch('/api/data?from='+grid.rows);if(!r.ok)return;
  const from=+r.headers.get('X-Row-From'),to=+r.headers.get('X-Row-To'),q=new Int16Array(await r.arrayBuffer());
  if(q.length!==(to-from)*nx||to>ny)return;
- for(let k=0;k<q.length;k++)grid.d[from*nx+k]=q[k]===-32768?NaN:q[k]/100;
- grid.rows=to;grid.ver=(grid.ver||0)+1;draw();}catch(e){}}
+ for(let k=0;k<q.length;k++)grid.raw[from*nx+k]=q[k]===-32768?NaN:q[k]/100;
+ grid.rows=to;applyFlip();}catch(e){}}
+// Spiegeln: grid.raw = Messdaten wie gescannt, grid.d = gespiegelte Ansicht für Vorschau und alle Exporte
+let flipX=false,flipY=false;
+function applyFlip(){if(!grid)return;const{nx,ny,raw,d}=grid;
+ for(let j=0;j<ny;j++){const js=flipY?ny-1-j:j;for(let i=0;i<nx;i++)d[j*nx+i]=raw[js*nx+(flipX?nx-1-i:i)];}
+ grid.ver=(grid.ver||0)+1;$('flipI').textContent=(flipX||flipY)?'gespiegelt: '+[flipX?'horizontal':'',flipY?'vertikal':''].filter(Boolean).join(' + '):'';draw();}
+function flip(ax){if(ax==='x')flipX=!flipX;else flipY=!flipY;applyFlip();}
 function cmap(t){const c=x=>Math.max(0,Math.min(1,x))*255;return[c(1.5-Math.abs(4*t-3)),c(1.5-Math.abs(4*t-2)),c(1.5-Math.abs(4*t-1))];}
 function draw(){updZ();if(!grid)return;const{nx,ny,d}=grid;let v=d,lbl='Abstand';
  if($('pv').checked){try{v=heights().z;lbl='Höhe';}catch(e){msg(e.message);}}
@@ -224,7 +236,7 @@ function fitBase0(nx,ny,res,d,tol){const X=[],Y=[],D=[];
  return P;}
 let zP=null;  // Z-Null-Ebene für Live-Z in der Kopfleiste
 function baseP(){const m=$('bm').value;if(m==='manual')return[0,0,+$('dman').value];
- if(!grid)throw new Error('Keine Scandaten');if(m==='start'){if(!isFinite(grid.d[0]))throw new Error('Messwert am Startpunkt ungültig');return[0,0,grid.d[0]];}
+ if(!grid)throw new Error('Keine Scandaten');if(m==='start'){if(!isFinite(grid.raw[0]))throw new Error('Messwert am Startpunkt ungültig');return[0,0,grid.raw[0]];}
  return fitBase();}
 function updZ(){try{zP=baseP();}catch(e){zP=null;}}
 const HP=['bm','dman','tol','thr','hf','hfa','ol','dz','dzm','dzr','gs','gp','fl','flt','fla'];
@@ -498,6 +510,57 @@ function ota(){const f=$('otaf').files[0];if(!f){$('otat').textContent='Keine Da
  $('otap').value=0;$('otat').textContent='Übertrage '+f.name+' …';x.open('POST','/update');x.send(fd);}
 document.querySelectorAll('details').forEach(d=>{try{const v=localStorage.getItem(d.id);if(v!==null)d.open=v==='1';}catch(e){}
  d.addEventListener('toggle',()=>{try{localStorage.setItem(d.id,d.open?'1':'0');}catch(e){}});});
+// ---------- Erklärungen beim Überfahren der Eingabefelder ----------
+const TIPS={
+ w:'Größe des Scanbereichs in X ab der aktuellen Position (mm). Der Startpunkt ist die linke vordere Ecke.',
+ h:'Größe des Scanbereichs in Y ab der aktuellen Position (mm).',
+ res:'Abstand der Messpunkte in X und Y (mm). Kleiner = feiner, aber deutlich mehr Punkte und längere Scanzeit. Sinnvoll: 0,25–1 mm.',
+ feed:'Geschwindigkeit beim Scannen (mm/s). Bei Anhalten an jedem Punkt bremst bei kleinem Raster meist die Beschleunigung, bei fliegender Messung ist das die Zeilengeschwindigkeit.',
+ travel:'Geschwindigkeit für Positionierfahrten (Zeilenanfang, Rückfahrt, Rahmen) in mm/s.',
+ settle:'Wartezeit nach dem Anfahren eines Punkts, damit Mechanik und Sensor ruhig sind (ms). Nur bei Anhalten an jedem Punkt. Empfohlen 60–100 ms.',
+ avg:'Anzahl gemittelter Messwerte pro Punkt. Mehr = weniger Rauschen, aber langsamer. ESP32-ADC: 32, ADS1115: 8–16 (je ca. 1,2 ms).',
+ bidir:'An: Zeilen abwechselnd hin und zurück (schneller). Aus: jede Zeile aus derselben Richtung (genauer, kein Zeilenversatz).',
+ fly:'Zeile ohne Anhalten durchfahren und beim Überfahren jedes Rasterpunkts messen. Deutlich schneller. Vor und hinter der Zeile wird etwas über den Bereich hinausgefahren.',
+ lat:'Nur fliegend: gleicht die Laufzeit von Sensor und Wandler aus. Einstellen an einer scharfen Kante mit Serpentine, bis die Kante gerade ist. Standard 2 ms.',
+ bm:'Wie die Auflagefläche (Z = 0) bestimmt wird. Auto: Ebene durch die am weitesten entfernten Punkte, gleicht Schräglage aus. Startpunkt: Messwert am ersten Punkt. Manuell: fester Abstand.',
+ dman:'Nur bei Z-Null „Manuell“: Abstand Sensor–Auflage in mm.',
+ tol:'Auto-Ebene: maximale Abweichung, bis zu der ein Punkt zur Auflage zählt (mm). Etwa 3 × Rauschen.',
+ thr:'Punkte niedriger als dieser Wert gelten als Auflage und werden nicht exportiert (mm). Auf dieser Höhe liegt auch der Umriss. Etwa 5 × Rauschen.',
+ hf:'Schließt kleine Löcher im Teil (Messausfälle, z. B. an glänzenden Stellen) durch glatte Interpolation aus der Umgebung.',
+ hfa:'Löcher bis zu dieser Fläche werden geschlossen (mm²). Größere gelten als echte Bohrungen und bleiben offen. Knapp unter das kleinste echte Loch stellen.',
+ ol:'Einzelne Spitzen, die von allen Nachbarn um mehr als diesen Wert abweichen, werden verworfen und gefüllt (mm). Kanten bleiben erhalten. 0 = aus, sinnvoll 0,5–1 mm.',
+ dzm:'Gauß: gewichtetes Glätten, Kanten bleiben scharf (empfohlen). Mittelwert: einfacher Mittelwert. Löschen: entfernt in der CSV Punkte gleicher Höhe.',
+ dz:'Schaltet das Glätten ein (0 = aus). Nachbarn mit mehr als ca. 3 × diesem Höhenunterschied gelten als Kante und werden nicht einbezogen. Etwa 3 × Rauschen.',
+ gs:'Reichweite der Gauß-Glättung (mm). Größer = glatter, feine Details gehen verloren. Sinnvoll 0,3–1 mm.',
+ gp:'Wie oft die Gauß-Glättung angewendet wird. Mehr Durchläufe = stärker.',
+ dzr:'Nur Modus Mittelwert: Nachbarschaft in Punkten (1 = 3×3, 2 = 5×5).',
+ fl:'Erkennt ebene Bereiche und setzt sie exakt auf eine Ebene. Gekrümmte Flächen bleiben unverändert.',
+ flt:'Maximale Abweichung eines Punkts von der erkannten Ebene (mm). Sinnvoll 0,03–0,1 mm.',
+ fla:'Kleinere ebene Bereiche werden nicht begradigt (mm²).',
+ cs:'Glättung der Umrisslinie (mm). Größer = runder, Ecken werden weicher und Löcher etwas kleiner. 0 = ungeglättet.',
+ cma:'Konturen kleiner als diese Fläche gelten als Störung und werden weggelassen (mm²).',
+ cpv:'Zeigt den Umriss in der Vorschau: Außenkonturen weiß, Löcher türkis.',
+ dec:'Nur jeder k-te Punkt wird für 3MF, STL und STEP verwendet. Verkleinert große Dateien. Für STEP bei großen Scans 2–4.',
+ fn:'Dateiname der Exporte ohne Endung.',
+ js:'Weg pro Klick auf eine Pfeiltaste (mm).',
+ jf:'Geschwindigkeit für manuelles Verfahren und „Zum Nullpunkt“ (mm/s).',
+ calH:'Tatsächliche Höhe des Endmaßes (mm). Ideal 20–50 mm.',
+ calN:'Anzahl gemittelter Messwerte pro Kalibrierpunkt. Mehr = genauer.',
+ otaf:'Firmware-Datei wählen: „CoreXY_Scanner.ino.bin“ aus dem build-Ordner (Sketch → Kompilierte Binärdatei exportieren).',
+ pv:'Zeigt statt der Rohabstände die Höhe des Teils mit allen Export-Einstellungen (Z-Null, Mindesthöhe, Fehlstellen, Glättung).'};
+const tipEl=document.createElement('div');tipEl.id='tip';document.body.appendChild(tipEl);
+for(const[id,t]of Object.entries(TIPS)){const el=$(id);if(el)(el.closest('label')||el).dataset.tip=t;}
+let tipFor=null;
+function showTip(l){if(tipFor===l)return;tipFor=l;tipEl.textContent=l.dataset.tip;tipEl.style.display='block';
+ const r=l.getBoundingClientRect(),tw=tipEl.offsetWidth,th=tipEl.offsetHeight;
+ let x=Math.min(Math.max(8,r.left),innerWidth-tw-8),y=r.bottom+6;if(y+th>innerHeight-8)y=r.top-th-6;
+ tipEl.style.left=x+'px';tipEl.style.top=y+'px';}
+function hideTip(){tipFor=null;tipEl.style.display='none';}
+document.addEventListener('mouseover',e=>{const l=e.target.closest&&e.target.closest('[data-tip]');l?showTip(l):hideTip();});
+document.addEventListener('focusin',e=>{const l=e.target.closest&&e.target.closest('[data-tip]');l?showTip(l):hideTip();});   // Touch: beim Antippen
+document.addEventListener('focusout',hideTip);
+addEventListener('scroll',hideTip,true);
+
 updZ();
 poll();
 </script></body></html>
