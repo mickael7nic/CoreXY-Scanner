@@ -386,7 +386,14 @@ Kopf von Hand in den Ausschnitt fahren → **„Innenkontur abfahren“**. Die B
 
 Die Konturen werden auf dem ESP gespeichert (auch nach Neustart, in jedem Browser) und bilden zusammen eine Zeichnung. **„Letzte entfernen“** löscht die zuletzt hinzugefügte, **„Alle löschen“** beginnt neu. **DXF** / **SVG** exportiert alle Konturen (Außen: Ebene `AUSSEN`, Innen: `LOCH`). Koordinaten beziehen sich auf den aktuellen Nullpunkt – Außen- und Innenkonturen passen daher zueinander, solange der Nullpunkt zwischendurch nicht neu gesetzt wird.
 
-**PAUSE** und **STOP** funktionieren wie beim Scan; nach STOP bleibt der Kopf stehen und die Kontur wird verworfen. Bei einem Fehler (keine Kante gefunden, Ausdehnung überschritten) erscheint die Meldung im Kontur-Bereich und der Kopf fährt zum Startpunkt zurück.
+**DXF importieren:** Ein exportierter Umriss kann extern bearbeitet (z. B. in LibreCAD, Inkscape, Fusion – Unebenheiten glätten, Kanten begradigen) und wieder übernommen werden. Die importierten Konturen **ersetzen** die vorhandenen (mit Rückfrage), werden wie abgefahrene Konturen auf dem ESP gespeichert und gelten für Maße, „Kontur als Rand“, „Fläche innerhalb scannen“ und alle Exporte.
+
+- Gelesen werden Linien, Bögen, Kreise, Ellipsen, Splines und Polylinien (auch mit Bögen). Lose Linien und Bögen werden an den Enden zu geschlossenen Konturen verbunden (Lücken bis 0,05 mm); offen bleibende Linienzüge werden ignoriert und gemeldet.
+- Außen- oder Innenkontur ergibt sich aus der Verschachtelung (Ebenen-Namen sind egal), Inseln in Löchern sind möglich.
+- Koordinaten in mm (die Einheit der DXF wird umgerechnet). **Nicht verschieben** – die Lage muss zum Scan passen. Am sichersten den Umriss aus dem Kontur-Block exportieren bzw. im Export ohne Spiegelung.
+- Importierte Konturen werden nicht nachgeglättet (*Glättung σ* wirkt nicht), sie bleiben so wie gezeichnet.
+
+ bleibt der Kopf stehen und die Kontur wird verworfen. Bei einem Fehler (keine Kante gefunden, Ausdehnung überschritten) erscheint die Meldung im Kontur-Bereich und der Kopf fährt zum Startpunkt zurück.
 
 **Hinweise:** Die Lage der Kante kann je nach Fahrtrichtung durch Abschattung am Empfänger um einige Zehntel abweichen – Sensor möglichst so ausrichten, dass Sende- und Empfangsfenster längs der Kante liegen, und einmal an einem Teil mit bekannten Maßen prüfen. Einschnitte schmaler als die Schrittweite können übersprungen werden. Eine leicht schräge Auflage wird während der Fahrt nachgeführt.
 
