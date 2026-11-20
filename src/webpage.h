@@ -6,8 +6,9 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <title>CoreXY Scanner</title>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#15181c;color:#e6e6e6}
-main{max-width:1400px;margin:auto;padding:12px;display:grid;gap:12px;grid-template-columns:repeat(6,1fr);align-items:start}
-#s-status,#d-scan,#d-exp{grid-column:span 2}#d-man,#d-ota{grid-column:span 3}#s-prev{grid-column:1/-1}
+main{max-width:1500px;margin:auto;padding:12px;display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}#s-prev{grid-column:1/-1}
+.cgrid{display:grid;grid-template-columns:1fr;gap:12px}#ccv{width:100%;border-radius:4px}
 @media(max-width:900px){main{grid-template-columns:1fr}main>*{grid-column:1/-1!important}}
 section{background:#1f242a;border-radius:8px;padding:12px}
 h2{font-size:15px;margin:0 0 8px;color:#8fc1ff}
@@ -30,10 +31,14 @@ details[open] summary{margin-bottom:6px}
 #big{font-size:72px;font-weight:800;color:#ff2a2a;text-align:center;line-height:1.1;margin:6px 0;font-variant-numeric:tabular-nums}
 #tip{position:fixed;z-index:50;max-width:330px;background:#0f1215;color:#e6e6e6;border:1px solid #2d6cdf;border-radius:6px;padding:7px 10px;font-size:12.5px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.55);pointer-events:none;display:none}
 [data-tip]{cursor:help}
+details.sub{background:#181c21;border:1px solid #2a313a;border-radius:6px;padding:4px 10px;margin:8px 0}
+details.sub summary{font-size:14px;color:#8fc1ff;padding:3px 0}
+.jb{touch-action:none;user-select:none;-webkit-user-select:none}
 #msg{color:#ffb347;min-height:1.2em;font-size:13px}.wide{grid-column:1/-1}
 </style></head><body>
 <div class="bar"><b>CoreXY Scanner</b><span id="bstate">-</span><span id="bpos">-</span><button id="bpause" class="gr" onclick="cmd('/api/pause')" style="margin-left:auto">PAUSE</button><button class="red" style="margin-left:0" onclick="cmd('/api/stop')">STOP</button></div>
 <main>
+<div class="col">
 <section id="s-status"><h2>Status</h2><div class="kv">
 <span>Zustand</span><span id="state">-</span>
 <span>X / Y</span><span id="pos">-</span>
@@ -52,6 +57,30 @@ details[open] summary{margin-bottom:6px}
 <button class="gr" onclick="cmd('/api/enable?on=1')">Motoren an</button>
 <button class="gr" onclick="cmd('/api/enable?on=0')">Motoren aus</button>
 </section>
+<details id="d-man"><summary>Manuell verfahren</summary>
+<label>Schrittweite mm<select id="js"><option>0.1</option><option>1</option><option selected>10</option><option>50</option></select></label>
+<label>Geschwindigkeit mm/s<input id="jf" type="number" value="30"></label>
+<div class="jog"><span></span><button class="jb" data-dx="0" data-dy="1">Y+</button><span></span>
+<button class="jb" data-dx="-1" data-dy="0">X−</button><span></span><button class="jb" data-dx="1" data-dy="0">X+</button>
+<span></span><button class="jb" data-dx="0" data-dy="-1">Y−</button><span></span></div>
+<div style="font-size:12px;color:#8fa0b8;text-align:center;margin-top:-4px">kurz tippen = ein Schritt · gedrückt halten = fahren</div>
+<button onclick="cmd('/api/zero')">Nullpunkt hier</button>
+<button onclick="cmd('/api/home?f='+$('jf').value)">Zum Nullpunkt</button>
+<h2 style="margin-top:14px">Höhen-Kalibrierung (2 Punkte)</h2>
+<label>Höhe Endmaß mm<input id="calH" type="number" value="10" step="any"></label>
+<label>Messwerte pro Punkt<input id="calN" type="number" value="128"></label>
+<button onclick="calP(1)">1: Auflage messen</button><button onclick="calP(2)">2: Endmaß messen</button><br>
+<button onclick="calApply()">Übernehmen</button><button class="gr" onclick="if(confirm('Kalibrierung zurücksetzen?'))cmd('/api/cal?reset=1')">Zurücksetzen</button>
+<div id="calI" class="kv"></div>
+</details>
+<details id="d-ota"><summary>Firmware-Update (OTA)</summary>
+<input id="otaf" type="file" accept=".bin" style="width:auto">
+<button onclick="ota()">Hochladen &amp; flashen</button>
+<progress id="otap" value="0" max="1"></progress><div id="otat" class="kv"></div>
+<button class="gr" onclick="if(confirm('Scan-Speicher formatieren? Der gespeicherte Scan wird gelöscht.'))cmd('/api/format').then(()=>{grid=null;draw();})">Scan-Speicher formatieren</button>
+</details>
+</div>
+<div class="col">
 <details id="d-scan" open><summary>Scan-Einstellungen (ab aktueller Position)</summary>
 <label>Bereich X mm<input id="w" type="number" value="50" step="any"></label>
 <label>Bereich Y mm<input id="h" type="number" value="50" step="any"></label>
@@ -74,11 +103,16 @@ details[open] summary{margin-bottom:6px}
 <label>Manueller Abstand mm<input id="dman" type="number" value="100" step="any" onchange="draw()"></label>
 <label>Ebenen-Toleranz mm<input id="tol" type="number" value="0.3" step="any" onchange="draw()"></label>
 <label>Mindesthöhe Teil mm (darunter = Auflage)<input id="thr" type="number" value="0.5" step="any" onchange="draw()"></label>
-<h2 style="margin-top:12px">Fehlstellen</h2>
+<label>Höhen-Offset mm (Unterlage abziehen)<input id="zoff" type="number" value="0" step="any" onchange="draw()"></label>
+<label>Kontur als Rand verwenden (scharfe Kanten)<input id="cmask" type="checkbox" onchange="draw()"></label>
+<details id="d-ex-fs" class="sub"><summary>Fehlstellen</summary>
 <label>Kleine Löcher schließen<input id="hf" type="checkbox" checked onchange="draw()"></label>
 <label>max. Lochfläche mm² (größer = echtes Loch)<input id="hfa" type="number" value="4" step="any" onchange="draw()"></label>
+<label>Kantenkorrektur bis mm nach innen (nur Kontur als Rand)<input id="ebw" type="number" value="2" step="any" min="0" onchange="draw()"></label>
+<label>Randstreifen neu berechnen mm (nur Kontur als Rand)<input id="eb" type="number" value="0" step="any" onchange="draw()"></label>
 <label>Ausreißer entfernen ab mm (0 = aus)<input id="ol" type="number" value="0" step="any" onchange="draw()"></label>
-<h2 style="margin-top:12px">Oberfläche glätten</h2>
+</details>
+<details id="d-ex-gl" class="sub"><summary>Oberfläche glätten</summary>
 <label>Modus<select id="dzm" onchange="draw()"><option value="gauss">Gauß, kantenerhaltend (alle Exporte)</option><option value="avg">Mittelwert (alle Exporte)</option><option value="del">Löschen (nur CSV)</option></select></label>
 <label>Z-Toleranz mm (0 = aus, Kanten > 3× bleiben)<input id="dz" type="number" value="0" step="any" onchange="draw()"></label>
 <label>Gauß-Radius σ mm<input id="gs" type="number" value="0.5" step="any" onchange="draw()"></label>
@@ -87,40 +121,55 @@ details[open] summary{margin-bottom:6px}
 <label>Ebene Flächen begradigen<input id="fl" type="checkbox" onchange="draw()"></label>
 <label>Ebenen-Toleranz mm<input id="flt" type="number" value="0.05" step="any" onchange="draw()"></label>
 <label>Ebene min. Fläche mm²<input id="fla" type="number" value="25" step="any" onchange="draw()"></label>
-<h2 style="margin-top:12px">Umriss</h2>
+</details>
+<details id="d-ex-hn" class="sub"><summary>Höhe normieren</summary>
+<label>Wölbung entfernen, Radius mm (0 = aus)<input id="nwr" type="number" value="0" step="any" min="0" onchange="draw()"></label>
+<label>Max. Höhe mm (0 = aus)<input id="nmx" type="number" value="0" step="any" min="0" onchange="draw()"></label>
+<label>Grunddicke mm<input id="ngd" type="number" value="0" step="any" min="0" onchange="draw()"></label>
+</details>
+<details id="d-ex-um" class="sub"><summary>Umriss</summary>
 <label>Umriss-Glättung σ mm (0 = aus)<input id="cs" type="number" value="0.5" step="any" onchange="draw()"></label>
 <label>Konturen kleiner als mm² ignorieren<input id="cma" type="number" value="2" step="any" onchange="draw()"></label>
 <label>Umriss in Vorschau zeigen<input id="cpv" type="checkbox" onchange="draw()"></label>
+</details>
+<details id="d-ex-da" class="sub" open><summary>Dateien</summary>
+<label>Schalendicke mm (0 = Unterseite eben)<input id="sht" type="number" value="0" step="any" min="0"></label>
 <label>Ausdünnung 3MF/STL/STEP (jeder k-te Punkt)<input id="dec" type="number" value="1" min="1"></label>
+<label>STEP max. Flächen (Ausdünnung automatisch)<input id="smax" type="number" value="50000" step="1000"></label>
 <label>Dateiname<input id="fn" value="scan"></label>
 <button onclick="exp('csv')">CSV</button><button onclick="exp('3mf')">3MF</button><button onclick="exp('stl')">STL</button><button onclick="exp('step')">STEP</button><button onclick="exp('dxf')">Umriss DXF</button><button onclick="exp('svg')">Umriss SVG</button>
+<div class="kv" style="margin-top:8px"><span>Scan-Datei (.cxs)</span><span>Höhendaten + Konturen</span></div>
+<button onclick="cxsSave()">Scan → PC speichern</button><button onclick="$('cxsf').click()">PC → ESP laden</button>
+<input id="cxsf" type="file" accept=".cxs" style="display:none" onchange="cxsLoad(this.files[0]);this.value=''">
+<progress id="cxsp" value="0" max="1" style="display:none"></progress><div id="cxst" class="kv"></div>
+</details>
 <div id="einfo" class="kv"></div>
 </details>
-<details id="d-man"><summary>Manuell verfahren</summary>
-<label>Schrittweite mm<select id="js"><option>0.1</option><option>1</option><option selected>10</option><option>50</option></select></label>
-<label>Geschwindigkeit mm/s<input id="jf" type="number" value="30"></label>
-<div class="jog"><span></span><button onclick="jog(0,1)">Y+</button><span></span>
-<button onclick="jog(-1,0)">X−</button><span></span><button onclick="jog(1,0)">X+</button>
-<span></span><button onclick="jog(0,-1)">Y−</button><span></span></div>
-<button onclick="cmd('/api/zero')">Nullpunkt hier</button>
-<button onclick="cmd('/api/home?f='+$('jf').value)">Zum Nullpunkt</button>
-<h2 style="margin-top:14px">Höhen-Kalibrierung (2 Punkte)</h2>
-<label>Höhe Endmaß mm<input id="calH" type="number" value="10" step="any"></label>
-<label>Messwerte pro Punkt<input id="calN" type="number" value="128"></label>
-<button onclick="calP(1)">1: Auflage messen</button><button onclick="calP(2)">2: Endmaß messen</button><br>
-<button onclick="calApply()">Übernehmen</button><button class="gr" onclick="if(confirm('Kalibrierung zurücksetzen?'))cmd('/api/cal?reset=1')">Zurücksetzen</button>
-<div id="calI" class="kv"></div>
+</div>
+<div class="col">
+<details id="d-cont"><summary>Kontur abfahren (nur Umriss, ohne Flächenscan)</summary>
+<div class="cgrid"><div>
+<label>Suchrichtung<select id="cdir"><option value="0">+X (Teil liegt rechts)</option><option value="2">−X (Teil liegt links)</option><option value="1">+Y (Teil liegt hinten)</option><option value="3">−Y (Teil liegt vorne)</option></select></label>
+<label>Schrittweite mm<input id="cstep" type="number" value="0.5" step="any"></label>
+<label>Kantenhöhe mm<input id="cthr" type="number" value="0.5" step="any"></label>
+<label>Verfeinerung (Halbierungen)<input id="cref" type="number" value="2" min="0" max="6"></label>
+<label>Max. Suchweg / Ausdehnung mm<input id="cmax" type="number" value="300"></label>
+<label>Geschwindigkeit mm/s<input id="cf" type="number" value="30"></label>
+<label>Beruhigung ms<input id="cset" type="number" value="30"></label>
+<label>Mittelung (Samples)<input id="cavg" type="number" value="16"></label>
+<label>Glättung σ mm (0 = aus)<input id="csm" type="number" value="0.3" step="any" onchange="drawC()"></label>
+<button onclick="cStart(0)">Außenkontur abfahren</button><button onclick="cStart(1)">Innenkontur abfahren</button><br>
+<button onclick="cScanInside()" title="Höhenscan nur innerhalb der Konturen, mit den Scan-Einstellungen (Auflösung, Messart …)">Fläche innerhalb scannen</button><br>
+<button class="gr" onclick="cUndo()">Letzte entfernen</button><button class="gr" onclick="cClear()">Alle löschen</button>
+<button onclick="cExp('dxf')">DXF</button><button onclick="cExp('svg')">SVG</button>
+<div id="cinfo" class="kv"></div>
+</div><div><canvas id="ccv" width="10" height="10"></canvas></div></div>
 </details>
-<details id="d-ota"><summary>Firmware-Update (OTA)</summary>
-<input id="otaf" type="file" accept=".bin" style="width:auto">
-<button onclick="ota()">Hochladen &amp; flashen</button>
-<progress id="otap" value="0" max="1"></progress><div id="otat" class="kv"></div>
-<button class="gr" onclick="if(confirm('Scan-Speicher formatieren? Der gespeicherte Scan wird gelöscht.'))cmd('/api/format').then(()=>{grid=null;draw();})">Scan-Speicher formatieren</button>
-</details>
-
+</div>
 <section id="s-prev"><h2>Vorschau</h2>
 <label style="justify-content:flex-start">Nur Teil anzeigen (Z-Null/Schwelle aus Export)<input id="pv" type="checkbox" onchange="draw()"></label>
 <canvas id="cv" width="10" height="10"></canvas><div id="leg" class="kv"></div>
+<h2 style="margin-top:10px">Maße</h2><div id="meas" class="kv"></div>
 <button class="gr" onclick="loadData()">Daten neu laden</button>
 <button class="gr" onclick="flip('x')" title="Links und rechts tauschen (X spiegeln)">↔ Horizontal spiegeln</button>
 <button class="gr" onclick="flip('y')" title="Oben und unten tauschen (Y spiegeln)">↕ Vertikal spiegeln</button>
@@ -170,8 +219,9 @@ function est(){const w=+$('w').value,h=+$('h').value,r=+$('res').value;if(!(r>0)
 async function poll(){
  try{const r=await fetch('/api/status');st=await r.json();
   const sn=st.state+(st.partial&&st.state==='DONE'?' (abgebrochen)':'');$('state').textContent=sn;$('bstate').textContent=sn;
-  const gx=grid&&flipX?(grid.nx-1)*grid.res-st.x:st.x,gy=grid&&flipY?(grid.ny-1)*grid.res-st.y:st.y;   // Live-Z bei gespiegelter Ansicht
-  const zl=zP&&st.dist!=null?zP[0]*gx+zP[1]*gy+zP[2]-st.dist:NaN;
+  const rx=st.x-(grid?grid.ox:0),ry=st.y-(grid?grid.oy:0);   // Live-Z: Rasterkoordinaten, ggf. gespiegelt
+  const gx=grid&&flipX?(grid.nx-1)*grid.res-rx:rx,gy=grid&&flipY?(grid.ny-1)*grid.res-ry:ry;
+  const zl=zP&&st.dist!=null?zP[0]*gx+zP[1]*gy+zP[2]-st.dist-Math.max(0,+$('zoff').value||0):NaN;
   $('bpos').textContent='X '+fx(st.x,2)+'  Y '+fx(st.y,2)+'  Z '+fx(zl,2);
   $('pos').textContent=fx(st.x)+' / '+fx(st.y)+' mm';
   $('dist').textContent=st.dist==null?'ungültig / kein Objekt':fx(st.dist)+' mm';
@@ -182,26 +232,28 @@ async function poll(){
   if(st.fstotal)$('fs').textContent=`${st.fstotal>>10} kB gesamt, max. ca. ${Math.max(0,Math.floor((st.fstotal*0.95-16384)/2)).toLocaleString('de-DE')} Punkte`;
   $('pb').max=st.total||1;$('pb').value=st.done;$('pbt').textContent=(st.total?100*st.done/st.total:0).toFixed(1)+' %';timeInfo();
   const run=s=>s==='SCAN'||s==='RETURN'||s==='PAUSED';
-  const pb=st.state==='PAUSED'?'WEITER':'PAUSE',pe=st.state==='SCAN'||st.state==='PAUSED';
+  const pb=st.state==='PAUSED'?'WEITER':'PAUSE',pe=st.state==='SCAN'||st.state==='PAUSED'||st.state==='CONTOUR';
   for(const id of['bpause','spause']){$(id).textContent=pb;$(id).disabled=!pe;$(id).style.opacity=pe?1:.4;}
   if(st.state==='SCAN'&&Date.now()-lastFetch>3000)loadData();
   if((run(prevState)&&!run(st.state))||(!grid&&st.total>0&&!run(st.state)&&Date.now()-lastFetch>5000))loadData();
   prevState=st.state;
+  cPoll();cSync();
  }catch(e){$('state').textContent='keine Verbindung';}
  est();setTimeout(poll,500);}
 // lädt nur neue Zeilen nach (Server liefert Zeilen ab 'from')
 async function loadData(){lastFetch=Date.now();try{const nx=st.nx,ny=st.ny,res=st.res;if(!nx||!ny)return;
- if(!grid||grid.nx!==nx||grid.ny!==ny||grid.res!==res||(st.rows??0)<grid.rows)grid={nx,ny,res,raw:new Float32Array(nx*ny).fill(NaN),d:new Float32Array(nx*ny).fill(NaN),rows:0};
+ const ox=st.ox||0,oy=st.oy||0;
+ if(!grid||grid.nx!==nx||grid.ny!==ny||grid.res!==res||grid.ox!==ox||grid.oy!==oy||(st.rows??0)<grid.rows)grid={nx,ny,res,ox,oy,raw:new Float32Array(nx*ny).fill(NaN),d:new Float32Array(nx*ny).fill(NaN),rows:0};
  const r=await fetch('/api/data?from='+grid.rows);if(!r.ok)return;
  const from=+r.headers.get('X-Row-From'),to=+r.headers.get('X-Row-To'),q=new Int16Array(await r.arrayBuffer());
  if(q.length!==(to-from)*nx||to>ny)return;
  for(let k=0;k<q.length;k++)grid.raw[from*nx+k]=q[k]===-32768?NaN:q[k]/100;
  grid.rows=to;applyFlip();}catch(e){}}
 // Spiegeln: grid.raw = Messdaten wie gescannt, grid.d = gespiegelte Ansicht für Vorschau und alle Exporte
-let flipX=false,flipY=false;
-function applyFlip(){if(!grid)return;const{nx,ny,raw,d}=grid;
+let flipX=false,flipY=false,gridVer=0;   // gridVer global: neue Daten gleicher Größe nie mit alten Caches verwechseln
+function applyFlip(){if(!grid)return;grid.ox=grid.ox||0;grid.oy=grid.oy||0;const{nx,ny,raw,d}=grid;
  for(let j=0;j<ny;j++){const js=flipY?ny-1-j:j;for(let i=0;i<nx;i++)d[j*nx+i]=raw[js*nx+(flipX?nx-1-i:i)];}
- grid.ver=(grid.ver||0)+1;$('flipI').textContent=(flipX||flipY)?'gespiegelt: '+[flipX?'horizontal':'',flipY?'vertikal':''].filter(Boolean).join(' + '):'';draw();}
+ grid.ver=++gridVer;$('flipI').textContent=(flipX||flipY)?'gespiegelt: '+[flipX?'horizontal':'',flipY?'vertikal':''].filter(Boolean).join(' + '):'';draw();}
 function flip(ax){if(ax==='x')flipX=!flipX;else flipY=!flipY;applyFlip();}
 function cmap(t){const c=x=>Math.max(0,Math.min(1,x))*255;return[c(1.5-Math.abs(4*t-3)),c(1.5-Math.abs(4*t-2)),c(1.5-Math.abs(4*t-1))];}
 function draw(){updZ();if(!grid)return;const{nx,ny,d}=grid;let v=d,lbl='Abstand';
@@ -212,10 +264,10 @@ function draw(){updZ();if(!grid)return;const{nx,ny,d}=grid;let v=d,lbl='Abstand'
   if(isFinite(val)){let t=(val-mn)/((mx-mn)||1);if(v===d)t=1-t;c=cmap(t);}img.data[p]=c[0];img.data[p+1]=c[1];img.data[p+2]=c[2];img.data[p+3]=255;}
  ox.putImageData(img,0,0);const cv=$('cv'),sc=Math.max(1,Math.floor(900/Math.max(nx,ny)));cv.width=nx*sc;cv.height=ny*sc;
  const g=cv.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(off,0,0,cv.width,cv.height);
- if($('cpv').checked){try{const C=contours(),r=grid.res;g.lineWidth=Math.max(1.5,sc*0.3);
+ if($('cpv').checked){try{const C=maskOn()?{loops:relLoops()}:contours(),r=grid.res;g.lineWidth=Math.max(1.5,sc*0.3);
   for(const L of C.loops){g.strokeStyle=L.hole?'#00e5ff':'#ffffff';g.beginPath();
    L.pts.forEach(([x,y],k)=>{const px=(x/r+0.5)*sc,py=(ny-1-y/r+0.5)*sc;k?g.lineTo(px,py):g.moveTo(px,py);});g.closePath();g.stroke();}}catch(e){msg(e.message);}}
- $('leg').innerHTML=`<span>${lbl}</span><span>${fx(mn)} … ${fx(mx)} mm  (blau = tief, rot = hoch, grau = leer)</span>`;}
+ $('leg').innerHTML=`<span>${lbl}</span><span>${fx(mn)} … ${fx(mx)} mm  (blau = tief, rot = hoch, grau = leer)</span>`;measures();}
 
 // ---------- Z-Null / Höhen ----------
 function plane(X,Y,D,sel){let n=0,sx=0,sy=0,sd=0;for(let k=0;k<D.length;k++)if(sel[k]){n++;sx+=X[k];sy+=Y[k];sd+=D[k];}
@@ -225,13 +277,16 @@ function plane(X,Y,D,sel){let n=0,sx=0,sy=0,sd=0;for(let k=0;k<D.length;k++)if(s
  if(Math.abs(det)>1e-9*(xx*yy+1e-12)){a=(xd*yy-yd*xy)/det;b=(yd*xx-xd*xy)/det;}else if(xx>1e-12)a=xd/xx;else if(yy>1e-12)b=yd/yy;
  return[a,b,md-a*mx-b*my];}
 let fbCache=null;
-function fitBase(){const{nx,ny,res,d}=grid,tol=Math.max(0.01,+$('tol').value);const fk=grid.ver+'|'+nx+'|'+ny+'|'+tol;if(fbCache&&fbCache.k===fk)return fbCache.P;
- const P=fitBase0(nx,ny,res,d,tol);fbCache={k:fk,P};return P;}
-function fitBase0(nx,ny,res,d,tol){const X=[],Y=[],D=[];
- for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const v=d[j*nx+i];if(isFinite(v)){X.push(i*res);Y.push(j*res);D.push(v);}}
+function fitBase(){const{nx,ny,res,d}=grid,tol=Math.max(0.01,+$('tol').value),M=maskOn()?maskGrid():null;
+ const fk=grid.ver+'|'+nx+'|'+ny+'|'+tol+'|'+(M?mCache.key:'');if(fbCache&&fbCache.k===fk)return fbCache.P;
+ const P=fitBase0(nx,ny,res,d,tol,M);fbCache={k:fk,P};return P;}
+// M (Maske): Startauswahl = Punkte außerhalb der Kontur (Auflage-Rand), sonst die 5 % entferntesten
+function fitBase0(nx,ny,res,d,tol,M){const X=[],Y=[],D=[],O=[];
+ for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const v=d[j*nx+i];if(isFinite(v)){X.push(i*res);Y.push(j*res);D.push(v);O.push(M?!M[j*nx+i]:false);}}
  if(D.length<3)throw new Error('Zu wenig gültige Punkte');
  const s=Float64Array.from(D).sort(),p95=s[Math.floor(0.95*(s.length-1))];
  let P=[0,0,p95],sel=D.map(v=>v>=p95-3*tol);
+ if(M&&O.filter(Boolean).length>=3){sel=O;const Q=plane(X,Y,D,sel);if(Q)P=Q;}
  for(let it=0;it<10;it++){const Q=plane(X,Y,D,sel);if(!Q)break;P=Q;sel=D.map((v,k)=>Math.abs(P[0]*X[k]+P[1]*Y[k]+P[2]-v)<tol);}
  return P;}
 let zP=null;  // Z-Null-Ebene für Live-Z in der Kopfleiste
@@ -239,24 +294,80 @@ function baseP(){const m=$('bm').value;if(m==='manual')return[0,0,+$('dman').val
  if(!grid)throw new Error('Keine Scandaten');if(m==='start'){if(!isFinite(grid.raw[0]))throw new Error('Messwert am Startpunkt ungültig');return[0,0,grid.raw[0]];}
  return fitBase();}
 function updZ(){try{zP=baseP();}catch(e){zP=null;}}
-const HP=['bm','dman','tol','thr','hf','hfa','ol','dz','dzm','dzr','gs','gp','fl','flt','fla'];
+const HP=['bm','dman','tol','thr','zoff','ebw','hf','hfa','ol','eb','dz','dzm','dzr','gs','gp','fl','flt','fla','cmask','csm','nwr','nmx','ngd'];
 let hCache=null;
 function heights(){if(!grid)throw new Error('Keine Scandaten');
- const key=grid.ver+'|'+grid.nx+'|'+grid.ny+'|'+HP.map(k=>$(k).type==='checkbox'?$(k).checked:$(k).value).join('|');
+ const key=grid.ver+'|'+grid.nx+'|'+grid.ny+'|'+cVer+'|'+flipX+flipY+'|'+HP.map(k=>$(k).type==='checkbox'?$(k).checked:$(k).value).join('|');
  if(hCache&&hCache.key===key)return hCache.H;
  const{nx,ny,res,d}=grid,thr=Math.max(0.01,+$('thr').value);const P=baseP();
  let z=new Float32Array(nx*ny);
  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i,dv=d[k];z[k]=isFinite(dv)?P[0]*i*res+P[1]*j*res+P[2]-dv:NaN;}
  const ol=+$('ol').value;let nOut=0,nHole=0;
  if(ol>0){const r=removeOutliers(z,nx,ny,ol);z=r.z;nOut=r.n;}
- if($('hf').checked){const r=fillHoles(z,nx,ny,res,thr,Math.max(0,+$('hfa').value));z=r.z;nHole=r.n;}
+ const mk=maskOn()?maskGrid():null;
+ if(mk){for(let k=0;k<z.length;k++)if(!mk[k])z[k]=NaN;
+  // Kantenartefakte: innerhalb der Kontur (abgefahren auf Kantenhöhe) im Streifen "Kantenkorrektur" vom Rand
+  // kann ein Punkt nicht niedriger als die Kantenhöhe sein -> Fehlmessung, wird aus den Nachbarn gefüllt
+  const ebw=Math.max(0,+$('ebw').value||0);
+  if(ebw>0){const B=Math.max(1,Math.round(ebw/res)),L=new Int32Array(z.length).fill(-1),Q=[];
+   for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i;if(!mk[k])continue;let e=false;
+    for(let v=-1;v<=1&&!e;v++)for(let u=-1;u<=1;u++){const i2=i+u,j2=j+v;if(i2<0||j2<0||i2>=nx||j2>=ny||!mk[j2*nx+i2]){e=true;break;}}
+    if(e){L[k]=0;Q.push(k);}}
+   for(let h=0;h<Q.length;h++){const k=Q[h];if(L[k]>=B)continue;const i=k%nx;
+    for(const n of[k-1,k+1,k-nx,k+nx]){if(n<0||n>=z.length||(n===k-1&&i===0)||(n===k+1&&i===nx-1))continue;if(mk[n]&&L[n]<0){L[n]=L[k]+1;Q.push(n);}}}
+   for(let k=0;k<z.length;k++)if(L[k]>=0&&L[k]<B&&z[k]<thr)z[k]=NaN;
+   // halb getroffene Kante: von innen nach außen, Sprung > 1 mm nach unten gegenüber dem inneren Nachbarn = Fehlmessung
+   const J=Math.max(1,2*thr),byL=[];for(let k=0;k<z.length;k++)if(L[k]>=0&&L[k]<B)(byL[L[k]]||(byL[L[k]]=[])).push(k);
+   for(let l=B-1;l>=0;l--)for(const k of byL[l]||[]){if(!(z[k]===z[k]))continue;const i=k%nx,j=(k-i)/nx;let ref=-Infinity;
+    // Vergleich mit Punkten weiter innen; Radius wächst, bis welche gefunden sind (spitze Ecken haben nahe keine)
+    for(let R=2;R<=Math.max(4,4*B)&&ref===-Infinity;R*=2)
+     for(let v=-R;v<=R;v++)for(let u=-R;u<=R;u++){const i2=i+u,j2=j+v;if(i2<0||j2<0||i2>=nx||j2>=ny)continue;const n=j2*nx+i2;
+      if(mk[n]&&(L[n]<0||L[n]>l)&&z[n]===z[n])ref=Math.max(ref,z[n]);}
+    if(z[k]<ref-J)z[k]=NaN;}}
+  // Randstreifen: Messwerte nahe der Kontur verwerfen (Kantenartefakte), werden von innen fortgesetzt
+  const eb=+$('eb').value;if(eb>0){let cur=Uint8Array.from(mk);const n=Math.max(1,Math.round(eb/res));
+   for(let it=0;it<n;it++){const nx2=Uint8Array.from(cur);for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i;if(!cur[k])continue;
+     for(let v=-1;v<=1&&nx2[k];v++)for(let u=-1;u<=1;u++){const i2=i+u,j2=j+v;if(i2<0||j2<0||i2>=nx||j2>=ny||!cur[j2*nx+i2]){nx2[k]=0;break;}}}cur=nx2;}
+   if(cur.some(Boolean))for(let k=0;k<z.length;k++)if(mk[k]&&!cur[k])z[k]=NaN;}
+  const r=fillMasked(z,mk,nx,ny);z=r.z;nHole=r.n;}   // Kontur = Rand, Lücken innen füllen
+ else if($('hf').checked){const r=fillHoles(z,nx,ny,res,thr,Math.max(0,+$('hfa').value));z=r.z;nHole=r.n;}
  const tz=+$('dz').value,m=$('dzm').value;
  if(tz>0&&m==='avg')z=smooth(z,nx,ny,tz,Math.max(1,Math.round(+$('dzr').value)||1));
  if(tz>0&&m==='gauss'){const sg=Math.max(0.01,+$('gs').value),np=Math.max(1,Math.round(+$('gp').value)||1);for(let q=0;q<np;q++)z=gauss(z,nx,ny,res,sg,tz);}
  if($('fl').checked)z=flatten(z,nx,ny,res,Math.max(0.001,+$('flt').value),Math.max(0,+$('fla').value));
  const zr=Float32Array.from(z);          // geglättet, ohne Schwelle (für Umriss)
- let cnt=0;for(let k=0;k<z.length;k++){if(z[k]>=thr)cnt++;else z[k]=NaN;}
+ let cnt=0;
+ if(mk){for(let k=0;k<z.length;k++)if(mk[k]){if(!(z[k]>=0.01))z[k]=0.01;cnt++;}else z[k]=NaN;}   // innerhalb der Kontur alles Teil
+ else for(let k=0;k<z.length;k++){if(z[k]>=thr)cnt++;else z[k]=NaN;}
+ const zo=Math.max(0,+$('zoff').value||0);   // Unterlage: erst nach der Teil-Erkennung abziehen
+ if(zo>0)for(let k=0;k<z.length;k++)if(z[k]===z[k])z[k]=Math.max(0.01,z[k]-zo);
+ normH(z,nx,ny,res);
  const H={z,zr,P,cnt,thr,nOut,nHole};hCache={key,H};return H;}
+// Höhe normieren: großräumige Wölbung abziehen (Relief bleibt), auf max. Höhe skalieren, Grunddicke darunter
+function normH(z,nx,ny,res){const wr=Math.max(0,+$('nwr').value||0),mx=Math.max(0,+$('nmx').value||0),gd=Math.max(0,+$('ngd').value||0);
+ if(!(wr>0||mx>0||gd>0))return;
+ let r=z;
+ if(wr>0){// lokale Ebene (gewichtete Regression, Kastenfilter 3× ≈ Gauß σ = Radius/2) -> kein Randfehler bei Wölbung
+  const h=Math.max(1,Math.round(wr/2/res)),N=z.length,cx=nx/2,cy=ny/2,F=[];for(let q=0;q<9;q++)F.push(new Float64Array(N));
+  for(let k=0;k<N;k++){const c=z[k];if(c!==c)continue;const x=(k%nx)-cx,y=Math.floor(k/nx)-cy;
+   F[0][k]=1;F[1][k]=x;F[2][k]=y;F[3][k]=c;F[4][k]=x*x;F[5][k]=x*y;F[6][k]=y*y;F[7][k]=x*c;F[8][k]=y*c;}
+  const S=new Float64Array(nx+1),P=new Float64Array(N+nx);
+  const boxX=A=>{for(let j=0;j<ny;j++){const b=j*nx;S[0]=0;for(let t=0;t<nx;t++)S[t+1]=S[t]+A[b+t];
+    for(let t=0;t<nx;t++)A[b+t]=S[Math.min(nx,t+h+1)]-S[Math.max(0,t-h)];}};
+  const boxY=A=>{for(let i=0;i<nx;i++)P[i]=0;for(let k=0;k<N;k++)P[k+nx]=P[k]+A[k];   // Zeilen-Präfixsummen
+    for(let j=0;j<ny;j++){const a=Math.min(ny,j+h+1)*nx,b=Math.max(0,j-h)*nx,o=j*nx;for(let i=0;i<nx;i++)A[o+i]=P[a+i]-P[b+i];}};
+  for(const A of F)for(let p=0;p<3;p++){boxX(A);boxY(A);}
+  r=new Float32Array(N).fill(NaN);
+  for(let k=0;k<N;k++){const c=z[k];if(c!==c)continue;const x=(k%nx)-cx,y=Math.floor(k/nx)-cy;
+   const w=F[0][k],mx_=F[1][k]/w,my=F[2][k]/w,mz=F[3][k]/w,sxx=F[4][k]/w-mx_*mx_,sxy=F[5][k]/w-mx_*my,syy=F[6][k]/w-my*my,
+    sxz=F[7][k]/w-mx_*mz,syz=F[8][k]/w-my*mz,det=sxx*syy-sxy*sxy;
+   let t=mz;if(det>1e-9*(sxx*syy+1e-12)){const gx=(sxz*syy-syz*sxy)/det,gy=(syz*sxx-sxz*sxy)/det;t=mz+gx*(x-mx_)+gy*(y-my);}
+   r[k]=c-t;}}
+ // Bezugspunkte robust (0,2 % / 99,8 %), damit Einzelwerte nicht skalieren
+ const v=[];for(let k=0;k<r.length;k++)if(r[k]===r[k])v.push(r[k]);if(!v.length)return;v.sort((p,q)=>p-q);
+ const lo=wr>0?v[Math.floor(v.length*0.002)]:0,hi=v[Math.min(v.length-1,Math.floor(v.length*0.998))];
+ let sc=1;if(mx>0){const span=Math.max(1e-6,hi-lo),room=mx-gd;sc=room>0?room/span:0;}
+ for(let k=0;k<z.length;k++)if(r[k]===r[k]){const q=gd+Math.max(0,r[k]-lo)*sc;z[k]=Math.max(0.01,mx>0?Math.min(mx,q):q);}}
 // Ausreißer: Einzelpunkt, der von ALLEN Nachbarn um mehr als lim abweicht -> ungültig (wird danach gefüllt).
 // Kantenpunkte haben immer Nachbarn auf gleicher Höhe und bleiben erhalten.
 function removeOutliers(z,nx,ny,lim){const o=Float32Array.from(z);let n=0;
@@ -374,7 +485,10 @@ function smooth(z,nx,ny,tol,r){const o=new Float32Array(z.length);
  return o;}
 
 // ---------- Netz (geschlossener Körper: Oberfläche + Wände + Boden auf Z=0) ----------
-function buildMesh(){const H=heights(),G=grid,k=Math.max(1,Math.round(+$('dec').value)||1);
+// Unterseite: eben (Z=0) oder Schale (Oberseite minus Dicke, senkrecht gemessen)
+function shellT(){const t=+$('sht').value;return t>0?Math.max(0.01,t):0;}
+function buildMesh(kOver){const H=heights(),G=grid,k=kOver||Math.max(1,Math.round(+$('dec').value)||1);
+ if(maskOn())return buildMeshCut(H,k);
  const nx=Math.floor((G.nx-1)/k)+1,ny=Math.floor((G.ny-1)/k)+1,r=G.res*k;
  const Z=(i,j)=>H.z[(j*k)*G.nx+i*k],cx=nx-1,cy=ny-1;
  if(cx<1||cy<1)return{V:new Float64Array(0),faces:[],H};
@@ -384,13 +498,14 @@ function buildMesh(){const H=heights(),G=grid,k=Math.max(1,Math.round(+$('dec').
  for(let ch=true;ch;){ch=false;for(let j=1;j<cy;j++)for(let i=1;i<cx;i++){const a=C(i-1,j-1),b=C(i,j-1),c=C(i-1,j),e=C(i,j);
   if(a&&e&&!b&&!c){cell[j*cx+i]=0;ch=true;}else if(b&&c&&!a&&!e){cell[j*cx+i-1]=0;ch=true;}}}  // nur-diagonal verbundene Zellen trennen (manifold)
  const V=[],top=new Int32Array(nx*ny).fill(-1),bot=new Int32Array(nx*ny).fill(-1);
- const vt=(i,j)=>{const q=j*nx+i;if(top[q]<0){top[q]=V.length/3;V.push(i*r,j*r,Z(i,j));}return top[q];};
- const vb=(i,j)=>{const q=j*nx+i;if(bot[q]<0){bot[q]=V.length/3;V.push(i*r,j*r,0);}return bot[q];};
+ const vt=(i,j)=>{const q=j*nx+i;if(top[q]<0){top[q]=V.length/3;V.push(G.ox+i*r,G.oy+j*r,Z(i,j));}return top[q];};
+ const sh=shellT();
+ const vb=(i,j)=>{const q=j*nx+i;if(bot[q]<0){bot[q]=V.length/3;V.push(G.ox+i*r,G.oy+j*r,sh?Z(i,j)-sh:0);}return bot[q];};
  const F=[];
  for(let j=0;j<cy;j++)for(let i=0;i<cx;i++){if(!C(i,j))continue;
   const p00=vt(i,j),p10=vt(i+1,j),p11=vt(i+1,j+1),p01=vt(i,j+1),b00=vb(i,j),b10=vb(i+1,j),b11=vb(i+1,j+1),b01=vb(i,j+1);
   F.push([p00,p10,p11],[p00,p11,p01]);
-  const bf=[b00,b01,b11,b10];bf.bottom=true;F.push(bf);
+  if(sh)F.push([b00,b11,b10],[b00,b01,b11]);else{const bf=[b00,b01,b11,b10];bf.bottom=true;F.push(bf);}
   if(!C(i,j-1))F.push([b00,b10,p10,p00]);
   if(!C(i,j+1))F.push([b11,b01,p01,p11]);
   if(!C(i-1,j))F.push([b01,b00,p00,p01]);
@@ -434,7 +549,8 @@ function makeStl(M){const V=M.V;let nt=0;for(const f of M.faces)nt+=f.length-2;
  return new Blob([buf],{type:'model/stl'});}
 
 // ---------- STEP AP214 (Volumenkörper, planare Flächen) ----------
-function makeStep(M,name){const V=M.V,L=[];let id=0;const E=s=>{L.push('#'+(++id)+'='+s+';');return id;};
+function makeStep(M,name){const V=M.V,chunks=[];let L=[],id=0;
+ const E=t=>{L.push('#'+(++id)+'='+t+';');if(L.length>=20000){chunks.push(L.join('\n')+'\n');L=[];}return id;};   // stückweise -> keine Längengrenze
  const r=v=>(Math.abs(v)<5e-6?0:v).toFixed(5),r8=v=>(Math.abs(v)<1e-12?0:v).toFixed(10);
  const dC=new Map(),dir=(x,y,z)=>{const n=Math.hypot(x,y,z);const k=`${r8(x/n)},${r8(y/n)},${r8(z/n)}`;let e=dC.get(k);if(!e){e=E(`DIRECTION('',(${k}))`);dC.set(k,e);}return e;};
  const app=E("APPLICATION_CONTEXT('core data for automotive mechanical design processes')");
@@ -447,24 +563,39 @@ function makeStep(M,name){const V=M.V,L=[];let id=0;const E=s=>{L.push('#'+(++id
  const org=E("CARTESIAN_POINT('',(0.,0.,0.))"),xAx=dir(1,0,0);
  const wcs=E(`AXIS2_PLACEMENT_3D('',#${org},#${dir(0,0,1)},#${xAx})`);
  const nv=V.length/3,cp=new Int32Array(nv),vp=new Int32Array(nv);
- for(let v=0;v<nv;v++){cp[v]=E(`CARTESIAN_POINT('',(${r(V[3*v])},${r(V[3*v+1])},${r(V[3*v+2])}))`);vp[v]=E(`VERTEX_POINT('',#${cp[v]})`);}
+ const P=v=>{if(!cp[v]){cp[v]=E(`CARTESIAN_POINT('',(${r(V[3*v])},${r(V[3*v+1])},${r(V[3*v+2])}))`);vp[v]=E(`VERTEX_POINT('',#${cp[v]})`);}return cp[v];};
  const edges=new Map();
  const oe=(a,b)=>{const lo=Math.min(a,b),hi=Math.max(a,b),key=lo*nv+hi;let e=edges.get(key);
-  if(e===undefined){const dx=V[3*hi]-V[3*lo],dy=V[3*hi+1]-V[3*lo+1],dz=V[3*hi+2]-V[3*lo+2];
+  if(e===undefined){P(lo);P(hi);const dx=V[3*hi]-V[3*lo],dy=V[3*hi+1]-V[3*lo+1],dz=V[3*hi+2]-V[3*lo+2];
    const vec=E(`VECTOR('',#${dir(dx,dy,dz)},${r(Math.hypot(dx,dy,dz))})`),ln=E(`LINE('',#${cp[lo]},#${vec})`);
    e=E(`EDGE_CURVE('',#${vp[lo]},#${vp[hi]},#${ln},.T.)`);edges.set(key,e);}
   return E(`ORIENTED_EDGE('',*,*,#${e},${a===lo?'.T.':'.F.'})`);};
- let botPl=0;const fids=[];
- for(const f of M.faces){let pl;
-  if(f.bottom){if(!botPl)botPl=E(`PLANE('',#${E(`AXIS2_PLACEMENT_3D('',#${org},#${dir(0,0,-1)},#${xAx})`)})`);pl=botPl;}
-  else{let nx=0,ny=0,nz=0;for(let q=0;q<f.length;q++){const a=f[q]*3,b=f[(q+1)%f.length]*3;
-    nx+=(V[a+1]-V[b+1])*(V[a+2]+V[b+2]);ny+=(V[a+2]-V[b+2])*(V[a]+V[b]);nz+=(V[a]-V[b])*(V[a+1]+V[b+1]);}
-   const a=f[0]*3,b=f[1]*3;
-   const ax=E(`AXIS2_PLACEMENT_3D('',#${cp[f[0]]},#${dir(nx,ny,nz)},#${dir(V[b]-V[a],V[b+1]-V[a+1],V[b+2]-V[a+2])})`);
-   pl=E(`PLANE('',#${ax})`);}
-  const oes=f.map((v,q)=>'#'+oe(v,f[(q+1)%f.length]));
-  const lp=E(`EDGE_LOOP('',(${oes.join(',')}))`),fb=E(`FACE_OUTER_BOUND('',#${lp},.T.)`);
+ const loopE=vs=>E(`EDGE_LOOP('',(${vs.map((v,q)=>'#'+oe(v,vs[(q+1)%vs.length])).join(',')}))`);
+ const fids=[];
+ // Seiten- und Oberflächen: je Polygon eine ebene Fläche
+ for(const f of M.faces){if(f.bottom)continue;
+  let nx=0,ny=0,nz=0;for(let q=0;q<f.length;q++){const a=f[q]*3,b=f[(q+1)%f.length]*3;
+   nx+=(V[a+1]-V[b+1])*(V[a+2]+V[b+2]);ny+=(V[a+2]-V[b+2])*(V[a]+V[b]);nz+=(V[a]-V[b])*(V[a+1]+V[b+1]);}
+  const a=f[0]*3,b=f[1]*3;
+  const ax=E(`AXIS2_PLACEMENT_3D('',#${P(f[0])},#${dir(nx,ny,nz)},#${dir(V[b]-V[a],V[b+1]-V[a+1],V[b+2]-V[a+2])})`);
+  const pl=E(`PLANE('',#${ax})`),fb=E(`FACE_OUTER_BOUND('',#${loopE(f)},.T.)`);
   fids.push('#'+E(`ADVANCED_FACE('',(#${fb}),#${pl},.T.)`));}
+ // Boden: alle Bodenflächen zu je einer ebenen Fläche pro Teil zusammenfassen (Außenrand + Löcher)
+ const bot=M.faces.filter(f=>f.bottom);
+ if(bot.length){const es=new Set();for(const f of bot)for(let q=0;q<f.length;q++)es.add(f[q]*nv+f[(q+1)%f.length]);
+  const nxt=new Map();for(const f of bot)for(let q=0;q<f.length;q++){const a=f[q],b=f[(q+1)%f.length];if(es.has(b*nv+a))continue;
+   if(!nxt.has(a))nxt.set(a,[]);nxt.get(a).push(b);}
+  const loops=[];for(const[s0]of nxt){while(nxt.get(s0)&&nxt.get(s0).length){const lp=[s0];let c=nxt.get(s0).pop(),g=0;
+    while(c!==s0&&g++<1e7){lp.push(c);const n=nxt.get(c);if(!n||!n.length)break;c=n.pop();}
+    if(c===s0&&lp.length>=3)loops.push(lp);}}
+  const xy=lp=>lp.map(v=>[V[3*v],V[3*v+1]]);
+  const L2=loops.map(lp=>{const p=xy(lp);return{lp,p,a:area(p)};});
+  const outs=L2.filter(o=>o.a<0),holes=L2.filter(o=>o.a>0);   // Boden von oben gesehen: außen im Uhrzeigersinn
+  const bpl=E(`PLANE('',#${E(`AXIS2_PLACEMENT_3D('',#${org},#${dir(0,0,-1)},#${xAx})`)})`);
+  const grp=outs.map(o=>({o,h:[]}));
+  for(const h of holes){let best=null;for(const g of grp)if(inPoly(h.p[0],g.o.p)&&(!best||Math.abs(g.o.a)<Math.abs(best.o.a)))best=g;if(best)best.h.push(h);}
+  for(const g of grp){const bs=[E(`FACE_OUTER_BOUND('',#${loopE(g.o.lp)},.T.)`),...g.h.map(h=>E(`FACE_BOUND('',#${loopE(h.lp)},.T.)`))];
+   fids.push('#'+E(`ADVANCED_FACE('',(${bs.map(x=>'#'+x).join(',')}),#${bpl},.T.)`));}}
  const sh=E(`CLOSED_SHELL('',(${fids.join(',')}))`),msb=E(`MANIFOLD_SOLID_BREP('${name}',#${sh})`);
  const rep=E(`ADVANCED_BREP_SHAPE_REPRESENTATION('${name}',(#${wcs},#${msb}),#${ctx})`);
  const pc=E(`PRODUCT_CONTEXT('',#${app},'mechanical')`),pr=E(`PRODUCT('${name}','${name}','',(#${pc}))`);
@@ -472,17 +603,46 @@ function makeStep(M,name){const V=M.V,L=[];let id=0;const E=s=>{L.push('#'+(++id
  const pdf=E(`PRODUCT_DEFINITION_FORMATION('','',#${pr})`),pdc=E(`PRODUCT_DEFINITION_CONTEXT('part definition',#${app},'design')`);
  const pd=E(`PRODUCT_DEFINITION('design','',#${pdf},#${pdc})`),pds=E(`PRODUCT_DEFINITION_SHAPE('','',#${pd})`);
  E(`SHAPE_DEFINITION_REPRESENTATION(#${pds},#${rep})`);
+ chunks.push(L.join('\n')+'\n');
  const head=`ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('CoreXY Laser Scan'),'2;1');\nFILE_NAME('${name}.step','${new Date().toISOString().slice(0,19)}',(''),(''),'CoreXY-Scanner','CoreXY-Scanner','');\nFILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));\nENDSEC;\nDATA;\n`;
- return[head,L.join('\n'),'\nENDSEC;\nEND-ISO-10303-21;\n'];}
+ return[head,...chunks,'ENDSEC;\nEND-ISO-10303-21;\n'];}
 
 // ---------- Export ----------
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
- setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+ setTimeout(()=>a.remove(),1000);
+ setTimeout(()=>URL.revokeObjectURL(a.href),600000);}   // erst nach 10 min freigeben (Rückfrage „Überschreiben?“ kann dauern)
 function info(H,M){let s=(H.nHole||H.nOut?`<span>Fehlstellen</span><span>${H.nHole} Loch/Löcher geschlossen, ${H.nOut} Ausreißer entfernt</span>`:'')+`<span>Z-Null-Ebene</span><span>d = ${fx(H.P[0],5)}·x + ${fx(H.P[1],5)}·y + ${fx(H.P[2])} mm</span><span>Teilpunkte</span><span>${H.cnt}</span>`;
- if(M)s+=`<span>Netz</span><span>${M.V.length/3} Vertices, ${M.faces.length} Flächen</span>`;$('einfo').innerHTML=s;}
-function exp(t){try{if(!grid)throw new Error('Keine Scandaten');if(st.state==='SCAN'||st.state==='PAUSED')throw new Error('Scan läuft noch');
+ if(M)s+=`<span>Netz</span><span>${M.V.length/3} Vertices, ${M.faces.length} Flächen${maskOn()?', Rand = Kontur':''}${M.fails?` – <b style="color:#ff6b5b">${M.fails} Randzelle(n) fehlerhaft</b>`:''}</span>`;$('einfo').innerHTML=s;}
+// ---- Scan-Datei .cxs: 64-Byte-Kopf | nx*ny int16 (Rohabstand 0.01 mm, wie gescannt) | Konturen-JSON
+function cxsSave(){try{if(!grid||!grid.nx)throw new Error('Keine Scandaten');if(taskRunning())throw new Error('Scan/Kontur läuft noch');
+ if(grid.rows<grid.ny)throw new Error('Scandaten noch nicht vollständig geladen');
+ const{nx,ny,res,ox,oy,raw}=grid,cj=new TextEncoder().encode(JSON.stringify(cLoops)),h=new DataView(new ArrayBuffer(64));
+ h.setUint32(0,0x31535843,true);h.setUint32(4,nx,true);h.setUint32(8,ny,true);h.setFloat32(12,res,true);h.setFloat32(16,ox,true);h.setFloat32(20,oy,true);
+ h.setUint32(24,st.total||nx*ny,true);h.setUint32(28,st.e0||0,true);h.setUint32(32,st.e1||0,true);h.setUint32(36,st.partial?1:0,true);h.setUint32(40,cj.length,true);
+ const q=new Int16Array(nx*ny);for(let k=0;k<q.length;k++){const v=raw[k];q[k]=v===v?Math.max(-32767,Math.min(32767,Math.round(v*100))):-32768;}
+ const d=st.e0?new Date(st.e0*1000):new Date(),p=n=>String(n).padStart(2,'0');
+ const name=($('fn').value||'scan')+'_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.cxs';
+ dl(new Blob([h.buffer,q.buffer,cj],{type:'application/octet-stream'}),name);
+ $('cxst').textContent=`gespeichert: ${name} (${nx}×${ny} Punkte, ${cLoops.length} Kontur(en))`;}catch(e){$('cxst').textContent=e.message;}}
+async function cxsLoad(f){if(!f)return;const T=t=>$('cxst').textContent=t;
+ try{if(taskRunning())throw new Error('Scan/Kontur läuft – erst beenden');
+  const b=await f.arrayBuffer(),h=new DataView(b);
+  if(b.byteLength<64||h.getUint32(0,true)!==0x31535843)throw new Error('Keine Scan-Datei (.cxs)');
+  const nx=h.getUint32(4,true),ny=h.getUint32(8,true),res=h.getFloat32(12,true),cl=h.getUint32(40,true);
+  if(b.byteLength!==64+nx*ny*2+cl)throw new Error('Scan-Datei beschädigt (Länge passt nicht)');
+  let L=[];if(cl){L=JSON.parse(new TextDecoder().decode(new Uint8Array(b,64+nx*ny*2,cl)));if(!Array.isArray(L))throw new Error('Konturen beschädigt');}
+  if(!confirm(`„${f.name}“ auf den ESP übertragen?\n${nx}×${ny} Punkte, Raster ${+res.toFixed(4)} mm, ${L.length} Kontur(en).\nDer aktuelle Scan und die Konturen auf dem ESP werden ersetzt.`))return;
+  const fd=new FormData();fd.append('scan',f,f.name);const x=new XMLHttpRequest(),pb=$('cxsp');pb.style.display='';
+  x.upload.onprogress=e=>{if(e.lengthComputable){pb.max=e.total;pb.value=e.loaded;T('Übertragung '+Math.round(100*e.loaded/e.total)+' %  ('+(e.loaded>>10)+' / '+(e.total>>10)+' kB)');}};
+  x.onload=()=>{pb.style.display='none';if(x.status!==200){T('Fehler: '+x.responseText);return;}
+   cLoops=L;cSave(false);cDirty=false;grid=null;flipX=flipY=false;lastFetch=0;hCache=null;
+   $('fn').value=f.name.replace(/\.cxs$/i,'').replace(/_\d{8}-\d{4}$/,'');drawC();
+   T(`geladen: ${f.name} – Daten werden vom ESP gelesen …`);};
+  x.onerror=()=>{pb.style.display='none';T('Übertragungsfehler');};
+  x.open('POST','/api/restore');x.send(fd);T('Übertragung …');}catch(e){T(e.message);}}
+async function exp(t){try{if(!grid)throw new Error('Keine Scandaten');if(st.state==='SCAN'||st.state==='PAUSED')throw new Error('Scan läuft noch');
  const fn=($('fn').value||'scan').replace(/[^\w\-]/g,'_');
- if(t==='dxf'||t==='svg'){const C=contours();if(!C.loops.length)throw new Error('Kein Umriss gefunden (Mindesthöhe prüfen)');
+ if(t==='dxf'||t==='svg'){const C=maskOn()?{loops:absLoops()}:{loops:contours().loops.map(L=>({pts:L.pts.map(([x,y])=>[x+grid.ox,y+grid.oy]),hole:L.hole}))};if(!C.loops.length)throw new Error('Kein Umriss gefunden (Mindesthöhe prüfen)');
   dl(t==='dxf'?makeDxf(C):makeSvg(C),fn+'.'+t);const nh=C.loops.filter(L=>L.hole).length;
   $('einfo').innerHTML=`<span>Umriss</span><span>${C.loops.length-nh} Außenkontur(en), ${nh} Loch/Löcher</span>`;msg('');return;}
  if(t==='csv'){const H=heights(),{nx,ny,res}=grid,L=['x_mm,y_mm,z_mm'];
@@ -490,13 +650,18 @@ function exp(t){try{if(!grid)throw new Error('Keine Scandaten');if(st.state==='S
   for(let j=0;j<ny;j++){let zk=NaN;for(let i=0;i<nx;i++){const z=H.z[j*nx+i];if(!isFinite(z)){zk=NaN;continue;}
    if(del&&isFinite(zk)){const zn=i+1<nx?H.z[j*nx+i+1]:NaN;   // Lauf-Ende (Stufe/Rand) immer behalten
     if(Math.abs(z-zk)<=tz&&isFinite(zn)&&Math.abs(zn-zk)<=tz)continue;}
-   zk=z;L.push(`${(i*res).toFixed(3)},${(j*res).toFixed(3)},${z.toFixed(3)}`);}}
+   zk=z;L.push(`${(grid.ox+i*res).toFixed(3)},${(grid.oy+j*res).toFixed(3)},${z.toFixed(3)}`);}}
   dl(new Blob([L.join('\n')+'\n'],{type:'text/csv'}),fn+'.csv');info(H);msg('');return;}
  const M=buildMesh();if(!M.faces.length)throw new Error('Kein zusammenhängender Teilbereich (mind. 2×2 Punkte über Schwelle nötig)');
  if(t==='3mf')dl(make3mf(M),fn+'.3mf');
  else if(t==='stl')dl(makeStl(M),fn+'.stl');
- else{if(M.faces.length>300000&&!confirm(M.faces.length+' Flächen – STEP wird sehr groß. Ausdünnung erhöhen? (Abbrechen = ja)'))return;
-  dl(new Blob(makeStep(M,fn),{type:'application/step'}),fn+'.step');}
+ else{   // STEP: Ausdünnung automatisch erhöhen, bis die Flächenzahl (ohne Boden) unter dem Limit liegt
+  const lim=Math.max(2000,+$('smax').value||50000),nf=X=>X.faces.reduce((n,f)=>n+(f.bottom?0:1),0);   // Schale: Unterseite zählt mit (nicht als Boden markiert)
+  let k=Math.max(1,Math.round(+$('dec').value)||1),M2=M,n=nf(M2),g=0;
+  while(n>lim&&g++<12){k=Math.max(k+1,Math.ceil(k*Math.sqrt(n/lim)*1.05));M2=buildMesh(k);n=nf(M2);}
+  msg('STEP wird erzeugt …');await new Promise(r=>setTimeout(r,30));
+  const parts=makeStep(M2,fn);dl(new Blob(parts,{type:'application/step'}),fn+'.step');
+  info(M2.H,M2);$('einfo').innerHTML+=`<span>STEP</span><span>Ausdünnung k = ${k}, ${n.toLocaleString('de-DE')} Flächen + Boden, ca. ${(parts.reduce((a,p)=>a+p.length,0)/1048576).toFixed(1)} MB</span>`;msg('');return;}
  info(M.H,M);msg('');}catch(e){msg(e.message||e);}}
 function ota(){const f=$('otaf').files[0];if(!f){$('otat').textContent='Keine Datei gewählt';return;}
  if(!/\.bin$/i.test(f.name)&&!confirm('Keine .bin-Datei – trotzdem flashen?'))return;
@@ -511,6 +676,222 @@ function ota(){const f=$('otaf').files[0];if(!f){$('otat').textContent='Keine Da
 document.querySelectorAll('details').forEach(d=>{try{const v=localStorage.getItem(d.id);if(v!==null)d.open=v==='1';}catch(e){}
  d.addEventListener('toggle',()=>{try{localStorage.setItem(d.id,d.open?'1':'0');}catch(e){}});});
 // ---------- Erklärungen beim Überfahren der Eingabefelder ----------
+// ---------- Kontur abfahren ----------
+let cLoops=[],cLastId=-1,cLive=null,cLastFetch=0;
+try{cLoops=JSON.parse(localStorage.getItem('cLoops')||'[]');cLastId=+(localStorage.getItem('cLastId')??-1);}catch(e){}
+function cSave(push=true){cVer++;try{localStorage.setItem('cLoops',JSON.stringify(cLoops));localStorage.setItem('cLastId',String(cLastId));}catch(e){}if(push)cDirty=true;}
+// Konturen zusätzlich auf dem ESP speichern (überleben Browserwechsel); gesendet wird nur bei stehenden Achsen
+let cDirty=false,cSyncing=false;
+async function cSync(){if(!cDirty||cSyncing||taskRunning()||st.busy)return;cSyncing=true;cDirty=false;
+ try{const fd=new FormData();fd.append('c',new Blob([JSON.stringify(cLoops)],{type:'application/json'}),'contour.json');
+  const r=await fetch('/api/cloops',{method:'POST',body:fd});if(!r.ok)cDirty=true;}catch(e){cDirty=true;}cSyncing=false;}
+// beim Start: Konturen vom ESP übernehmen; hat der ESP keine, die lokalen hochladen
+(async()=>{try{const r=await fetch('/api/cloops');
+ if(r.ok){const L=await r.json();if(Array.isArray(L)&&JSON.stringify(L)!==JSON.stringify(cLoops)){cLoops=L;cSave(false);drawC();}}
+ else if(r.status===404&&cLoops.length)cDirty=true;}catch(e){}})();
+function cStart(inner){if(inner===0&&cLoops.some(L=>!L.hole)&&!confirm('Es gibt schon eine Außenkontur. Trotzdem eine weitere abfahren?'))return;
+ const q={mode:inner,dir:$('cdir').value,step:$('cstep').value,thr:$('cthr').value,ref:$('cref').value,max:$('cmax').value,f:$('cf').value,settle:$('cset').value,avg:$('cavg').value};
+ cLive=[];cmd('/api/contour?'+Object.entries(q).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&'));}
+function cUndo(){cLoops.pop();cSave();drawC();}
+function cClear(){if(cLoops.length&&!confirm('Alle Konturen löschen?'))return;cLoops=[];cSave();drawC();}
+async function cFetch(final){cLastFetch=Date.now();try{const r=await fetch('/api/cdata');if(!r.ok)return;
+ const id=+r.headers.get('X-Contour-Id'),closed=r.headers.get('X-Closed')==='1',mode=+r.headers.get('X-Mode'),f=new Float32Array(await r.arrayBuffer()),pts=[];
+ for(let k=0;k+1<f.length;k+=2)pts.push([+f[k].toFixed(4),+f[k+1].toFixed(4)]);
+ if(final){if(id!==cLastId){cLastId=id;if(closed&&pts.length>=3){const nl={pts,hole:mode===1};
+   // dieselbe Kontur nochmal abgefahren (überlappt eine gleicher Art) -> ersetzen statt doppelt
+   const k=cLoops.findIndex(L=>L.hole===nl.hole&&(inPoly(nl.pts[0],L.pts)||inPoly(L.pts[0],nl.pts)));
+   if(k>=0){cLoops[k]=nl;msg('Überlappende '+(nl.hole?'Innen':'Außen')+'kontur ersetzt');}else cLoops.push(nl);}cSave();}cLive=null;}else cLive=pts;
+ drawC();}catch(e){}}
+function cPoll(){if(st.cst==null)return;
+ if(st.cst===1&&Date.now()-cLastFetch>1000)cFetch(false);
+ if((st.cst===2||st.cst===3)&&st.cid!==cLastId)cFetch(true);
+ cInfo();if(st.cst===1)drawC();}
+function cProc(){const sg=Math.max(0,+$('csm').value),stp=Math.max(0.05,+$('cstep').value);
+ return cLoops.map(L=>{let p=L.pts;if(sg>0)p=smoothLoop(p,sg,stp);p=simplifyLoop(p,0.005);return{pts:p,hole:L.hole,area:area(p)};});}
+// ---------- Maße ----------
+const perim=P=>{let s=0;for(let k=0;k<P.length;k++){const a=P[k],b=P[(k+1)%P.length];s+=Math.hypot(b[0]-a[0],b[1]-a[1]);}return s;};
+const bbox=P=>{let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(const[x,y]of P){a=Math.min(a,x);b=Math.max(b,x);c=Math.min(c,y);d=Math.max(d,y);}return[a,b,c,d];};
+const nf=(v,n=1)=>isFinite(v)?v.toLocaleString('de-DE',{minimumFractionDigits:n,maximumFractionDigits:n}):'–';
+function measures(){let h='';
+ // aus den Konturen (genau, geglättet)
+ const P=cProc(),O=P.filter(L=>!L.hole),I=P.filter(L=>L.hole);
+ if(O.length){const b=bbox(O.flatMap(L=>L.pts)),A=O.reduce((a,L)=>a+Math.abs(L.area),0)-I.reduce((a,L)=>a+Math.abs(L.area),0);
+  h+=`<span>Kontur L × B</span><span>${nf(b[1]-b[0],2)} × ${nf(b[3]-b[2],2)} mm (X × Y)</span>`+
+     `<span>Umfang</span><span>außen ${nf(O.reduce((a,L)=>a+perim(L.pts),0))} mm${I.length?`, Ausschnitte ${nf(I.reduce((a,L)=>a+perim(L.pts),0))} mm (${I.length})`:''}</span>`+
+     `<span>Fläche</span><span>${nf(A)} mm² (${nf(A/100,2)} cm²)${I.length?', Ausschnitte abgezogen':''}</span>`;}
+ // aus dem Höhenscan
+ const run=['SCAN','RETURN','PAUSED'].includes(st.state);
+ if(grid&&grid.rows&&!run){try{const H=heights(),{nx,ny,res}=grid;let n=0,s=0,zm=0,i0=1e9,i1=-1,j0=1e9,j1=-1;
+   for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const z=H.z[j*nx+i];if(!(z===z))continue;n++;s+=z;if(z>zm)zm=z;if(i<i0)i0=i;if(i>i1)i1=i;if(j<j0)j0=j;if(j>j1)j1=j;}
+   if(n){const a=res*res,V=s*a;
+    if(!O.length||!maskOn())h+=`<span>Scan L × B</span><span>ca. ${nf((i1-i0)*res,2)} × ${nf((j1-j0)*res,2)} mm (±${res} mm Raster)</span><span>Scan-Fläche</span><span>ca. ${nf(n*a)} mm²</span>`;
+    h+=`<span>Höhe</span><span>max. ${nf(zm,2)} mm, Mittel ${nf(s/n,2)} mm</span><span>Volumen</span><span>${nf(V,0)} mm³ (${nf(V/1000,2)} cm³)</span>`;}}catch(e){}}
+ else if(run)h+='<span>Scan</span><span>Maße nach Scanende</span>';
+ $('meas').innerHTML=h||'<span>–</span><span>noch keine Daten</span>';}
+function cInfo(){const P=cProc();let h='';
+ if(st.cst===1)h+=`<span>Läuft</span><span>${st.cn} Kantenpunkte</span>`;
+ if(st.cst===3&&st.cerr)h+=`<span>Fehler</span><span style="color:#ff6b5b">${st.cerr}</span>`;
+ P.forEach((L,k)=>{const b=bbox(L.pts);h+=`<span>${k+1}. ${L.hole?'Innen':'Außen'}</span><span>${(b[1]-b[0]).toFixed(2)} × ${(b[3]-b[2]).toFixed(2)} mm, Umfang ${perim(L.pts).toFixed(1)} mm, ${Math.abs(L.area).toFixed(1)} mm²</span>`;});
+ if(!P.length&&st.cst!==1)h+='<span>Konturen</span><span>noch keine</span>';
+ $('cinfo').innerHTML=h;}
+function drawC(){try{measures();}catch(e){}const cv=$('ccv'),P=cProc(),all=P.map(L=>L.pts);if(cLive&&cLive.length)all.push(cLive);
+ const hx=st.x,hy=st.y;let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;if(isFinite(hx)&&isFinite(hy))all.push([[hx,hy]]);for(const L of all)for(const[x,y]of L){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}
+ if(!isFinite(x0)){x0=y0=0;x1=y1=10;}const m=5;x0-=m;y0-=m;x1+=m;y1+=m;
+ const W=900,sc=W/Math.max(x1-x0,y1-y0,1),cw=Math.max(200,Math.round((x1-x0)*sc)),ch=Math.max(150,Math.round((y1-y0)*sc));
+ cv.width=cw;cv.height=ch;const g=cv.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,cw,ch);
+ const T=([x,y])=>[(x-x0)*sc,ch-(y-y0)*sc];g.lineWidth=Math.max(2,cw/300);
+ for(const L of P){g.strokeStyle=L.hole?'#00e5ff':'#ffffff';g.fillStyle=L.hole?'rgba(0,229,255,.08)':'rgba(255,255,255,.08)';g.beginPath();L.pts.forEach((p,k)=>{const[a,b]=T(p);k?g.lineTo(a,b):g.moveTo(a,b);});g.closePath();g.fill();g.stroke();}
+ if(cLive&&cLive.length){g.strokeStyle='#ffb347';g.beginPath();cLive.forEach((p,k)=>{const[a,b]=T(p);k?g.lineTo(a,b):g.moveTo(a,b);});g.stroke();}
+ if(isFinite(hx)){const[a,b]=T([hx,hy]);g.fillStyle='#ff2a2a';g.beginPath();g.arc(a,b,5,0,7);g.fill();}
+ g.fillStyle='#8fa0b8';g.font=Math.max(12,Math.round(cw/40))+'px sans-serif';g.fillText(`${(x1-x0).toFixed(0)} × ${(y1-y0).toFixed(0)} mm · weiß außen · türkis innen · orange läuft · rot Kopf`,8,ch-8);}
+function cExp(t){const P=cProc();if(!P.length)return msg('Keine Konturen vorhanden');
+ const fn=(($('fn').value||'scan').replace(/[^\w\-]/g,'_'))+'_kontur',C={loops:P};dl(t==='dxf'?makeDxf(C):makeSvg(C),fn+'.'+t);msg('');}
+
+// ---------- Kontur als Rand (Maske) ----------
+let cVer=0,mCache=null;
+function maskOn(){return !!grid&&$('cmask').checked&&cLoops.some(L=>!L.hole);}
+// Konturen in Rasterkoordinaten (relativ zum Rasterursprung, Spiegelung angewendet)
+function relLoops(){const W=(grid.nx-1)*grid.res,Hh=(grid.ny-1)*grid.res;
+ return cProc().map(L=>({pts:L.pts.map(([x,y])=>{let u=x-grid.ox,v=y-grid.oy;if(flipX)u=W-u;if(flipY)v=Hh-v;return[u,v];}),hole:L.hole}));}
+// Konturen in Maschinenkoordinaten (für Export, Spiegelung angewendet)
+function absLoops(){return relLoops().map(L=>({pts:L.pts.map(([u,v])=>[u+grid.ox,v+grid.oy]),hole:L.hole}));}
+// Schnittpunkte einer waagrechten Linie y mit allen Konturen (sortiert) -> innen zwischen Paaren (gerade/ungerade)
+function rowX(loops,y){const X=[];for(const L of loops){const P=L.pts,n=P.length;for(let k=0;k<n;k++){const a=P[k],b=P[(k+1)%n];
+ if((a[1]>y)!==(b[1]>y))X.push(a[0]+(y-a[1])/(b[1]-a[1])*(b[0]-a[0]));}}return X.sort((p,q)=>p-q);}
+function maskGrid(){const key=grid.ver+'|'+cVer+'|'+$('csm').value+'|'+flipX+flipY+'|'+grid.nx+'|'+grid.ny+'|'+grid.ox+'|'+grid.oy;
+ if(mCache&&mCache.key===key)return mCache.M;
+ const{nx,ny,res}=grid,L=relLoops(),M=new Uint8Array(nx*ny);
+ for(let j=0;j<ny;j++){const X=rowX(L,j*res);let q=0;for(let i=0;i<nx;i++){const x=i*res;while(q<X.length&&X[q]<=x)q++;if(q&1)M[j*nx+i]=1;}}
+ mCache={key,M};return M;}
+// Lücken innerhalb der Maske schichtweise aus den Nachbarn füllen
+function fillMasked(z,M,nx,ny){const o=Float32Array.from(z);let todo=[],n=0;
+ for(let k=0;k<o.length;k++)if(M[k]&&o[k]!==o[k])todo.push(k);
+ while(todo.length){const up=[],rest=[];
+  for(const k of todo){const i=k%nx;let s=0,c=0;
+   if(i>0&&o[k-1]===o[k-1]){s+=o[k-1];c++;}if(i<nx-1&&o[k+1]===o[k+1]){s+=o[k+1];c++;}
+   if(k>=nx&&o[k-nx]===o[k-nx]){s+=o[k-nx];c++;}if(k+nx<o.length&&o[k+nx]===o[k+nx]){s+=o[k+nx];c++;}
+   if(c)up.push(k,s/c);else rest.push(k);}
+  if(!up.length)break;for(let q=0;q<up.length;q+=2)o[up[q]]=up[q+1];n+=up.length/2;todo=rest;}
+ // isolierte Punkte (z.B. einzelne Rasterpunkte in spitzen Ecken): nächsten gültigen Wert im wachsenden Umkreis nehmen
+ const W=Float32Array.from(o);
+ for(const k of todo){const i=k%nx,j=(k-i)/nx;let best=NaN,bd=Infinity;
+  for(let R=1;R<=256&&best!==best;R*=2)for(let v=Math.max(0,j-R);v<=Math.min(ny-1,j+R);v++)for(let u=Math.max(0,i-R);u<=Math.min(nx-1,i+R);u++){
+   const w=W[v*nx+u];if(w===w){const dd=(u-i)*(u-i)+(v-j)*(v-j);if(dd<bd){bd=dd;best=w;}}}
+  o[k]=best===best?best:0.01;n++;}
+ return{z:o,n};}
+// Ohrenschneiden für einfache Polygone (gegen den Uhrzeigersinn)
+function earclip(ids,X,Y){const idx=ids.slice(),T=[];const cr=(a,b,c)=>(X[b]-X[a])*(Y[c]-Y[a])-(Y[b]-Y[a])*(X[c]-X[a]);
+ let guard=0;
+ while(idx.length>3&&guard++<100000){let found=false;
+  for(let q=0;q<idx.length;q++){const n=idx.length,a=idx[(q+n-1)%n],b=idx[q],c=idx[(q+1)%n];
+   if(cr(a,b,c)<=1e-14)continue;let ok=true;
+   for(const p of idx){if(p===a||p===b||p===c)continue;if(cr(a,b,p)>=-1e-14&&cr(b,c,p)>=-1e-14&&cr(c,a,p)>=-1e-14){ok=false;break;}}
+   if(!ok)continue;T.push([a,b,c]);idx.splice(q,1);found=true;break;}
+  if(!found)return{T,ok:false};}
+ if(idx.length===3){if(cr(idx[0],idx[1],idx[2])>1e-14)T.push(idx);else return{T,ok:false};}
+ return{T,ok:true};}
+
+// 3D-Netz mit exakten Konturrändern: volle Zellen wie gewohnt, Randzellen an der Kontur zugeschnitten,
+// Wände entlang der Kontur. Höhen am Rand aus den Innenpunkten fortgesetzt (bilinear).
+function buildMeshCut(H,k){const G=grid,r=G.res*k,nxc=Math.ceil((G.nx-1)/k)+1,nyc=Math.ceil((G.ny-1)/k)+1,ncx=nxc-1,ncy=nyc-1;
+ const F=new Float64Array(nxc*nyc).fill(NaN);
+ for(let j=0;j<nyc;j++)for(let i=0;i<nxc;i++){const gi=i*k,gj=j*k;if(gi<G.nx&&gj<G.ny){const v=H.z[gj*G.nx+gi];if(v===v)F[j*nxc+i]=v;}}
+ // nach außen fortsetzen, schichtweise bis alle Knoten nahe des Teils einen Wert haben (spitze Ecken: weit weg vom nächsten Innenpunkt)
+ {let front=[];for(let q=0;q<F.length;q++)if(F[q]!==F[q]){const i=q%nxc,j=(q-i)/nxc;for(let v=j-1;v<=j+1;v++)for(let u=i-1;u<=i+1;u++){if(u<0||v<0||u>=nxc||v>=nyc)continue;if(F[v*nxc+u]===F[v*nxc+u]){front.push(q);v=j+2;break;}}}
+  for(let it=0;it<60&&front.length;it++){const U=[],seen=new Set();
+   for(const q of front){const i=q%nxc,j=(q-i)/nxc;let s=0,c=0;for(let v=j-1;v<=j+1;v++)for(let u=i-1;u<=i+1;u++){if(u<0||v<0||u>=nxc||v>=nyc)continue;const w=F[v*nxc+u];if(w===w){s+=w;c++;}}if(c)U.push(q,s/c);}
+   for(let q=0;q<U.length;q+=2)F[U[q]]=U[q+1];
+   const nf=[];for(let q=0;q<U.length;q+=2){const k=U[q],i=k%nxc,j=(k-i)/nxc;for(let v=j-1;v<=j+1;v++)for(let u=i-1;u<=i+1;u++){if(u<0||v<0||u>=nxc||v>=nyc)continue;const n=v*nxc+u;if(F[n]!==F[n]&&!seen.has(n)){seen.add(n);nf.push(n);}}}
+   front=nf;}}
+ for(let q=0;q<F.length;q++)if(!(F[q]>=0.01))F[q]=0.01;
+ const hz=(x,y)=>{let i=Math.floor(x/r),j=Math.floor(y/r);i=Math.max(0,Math.min(nxc-2,i));j=Math.max(0,Math.min(nyc-2,j));const fx=x/r-i,fy=y/r-j;
+  return Math.max(0.01,F[j*nxc+i]*(1-fx)*(1-fy)+F[j*nxc+i+1]*fx*(1-fy)+F[(j+1)*nxc+i]*(1-fx)*fy+F[(j+1)*nxc+i+1]*fx*fy);};
+ // Konturen vorbereiten: ins Raster klemmen, nicht genau auf Rasterlinien, Orientierung außen CCW / innen CW
+ const Wx=(nxc-1)*r,Wy=(nyc-1)*r;
+ let loops=relLoops().map(L=>{const p=L.pts.map(([x,y])=>{x=Math.min(Wx-1e-3*r,Math.max(1e-3*r,x));y=Math.min(Wy-1e-3*r,Math.max(1e-3*r,y));
+   // Mindestabstand 0,2 % der Rasterweite zu Rasterlinien -> keine Splitter-Dreiecke
+   const sn=v=>{const f=v/r-Math.round(v/r);return Math.abs(f)<2e-3?(Math.round(v/r)+(f<0?-2e-3:2e-3))*r:v;};return[sn(x),sn(y)];});
+  const q=[];for(const P of p){const l=q[q.length-1];if(!l||Math.hypot(P[0]-l[0],P[1]-l[1])>5e-3*r)q.push(P);}   // fast doppelte Punkte weg
+  while(q.length>3&&Math.hypot(q[0][0]-q[q.length-1][0],q[0][1]-q[q.length-1][1])<=5e-3*r)q.pop();
+  const A=area(q);if(L.hole?A>0:A<0)q.reverse();return{pts:q,hole:L.hole};});
+ loops=loops.filter(L=>{let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(const[x,y]of L.pts){a=Math.min(a,x);b=Math.max(b,x);c=Math.min(c,y);d=Math.max(d,y);}
+  return Math.floor(a/r)!==Math.floor(b/r)||Math.floor(c/r)!==Math.floor(d/r);});
+ // 2D-Punkte: Rasterknoten 0..NN-1, danach Kontur- und Schnittpunkte
+ const NN=nxc*nyc,PX=[],PY=[],isB=[];
+ const px=id=>id<NN?(id%nxc)*r:PX[id-NN],py=id=>id<NN?Math.floor(id/nxc)*r:PY[id-NN];
+ const addP=(x,y,b)=>{PX.push(x);PY.push(y);isB.push(b);return NN+PX.length-1;};
+ const segs=new Map(),allSeg=[];
+ for(const L of loops){const P=L.pts,n=P.length,vid=P.map(([x,y])=>addP(x,y,false));
+  for(let q=0;q<n;q++){const[ax,ay]=P[q],[bx,by]=P[(q+1)%n],S=[];
+   for(let i=Math.ceil(Math.min(ax,bx)/r);i<=Math.floor(Math.max(ax,bx)/r);i++){const t=(i*r-ax)/(bx-ax);if(t>0&&t<1)S.push([t,i*r,ay+t*(by-ay),0]);}
+   for(let j=Math.ceil(Math.min(ay,by)/r);j<=Math.floor(Math.max(ay,by)/r);j++){const t=(j*r-ay)/(by-ay);if(t>0&&t<1)S.push([t,ax+t*(bx-ax),j*r,1]);}
+   S.sort((u,w)=>u[0]-w[0]);
+   const ch=[vid[q],...S.map(([,x,y])=>addP(x,y,true)),vid[(q+1)%n]];
+   for(let m=0;m+1<ch.length;m++){const u=ch[m],w=ch[m+1],mx=(px(u)+px(w))/2,my=(py(u)+py(w))/2;
+    const ci=Math.min(ncx-1,Math.max(0,Math.floor(mx/r))),cj=Math.min(ncy-1,Math.max(0,Math.floor(my/r))),key=cj*ncx+ci;
+    if(!segs.has(key))segs.set(key,[]);segs.get(key).push([u,w]);allSeg.push([u,w]);}}}
+ // 3D-Eckpunkte (oben/unten) bei Bedarf
+ const V=[],vT=new Map(),vB=new Map();
+ const vt=id=>{let v=vT.get(id);if(v===undefined){v=V.length/3;const x=px(id),y=py(id);V.push(x,y,id<NN?F[id]:hz(x,y));vT.set(id,v);}return v;};
+ const sh=shellT();
+ const vb=id=>{let v=vB.get(id);if(v===undefined){v=V.length/3;const x=px(id),y=py(id);V.push(x,y,sh?(id<NN?F[id]:hz(x,y))-sh:0);vB.set(id,v);}return v;};
+ const Fc=[];let fails=0;
+ const eps=1e-7*r;
+ for(let cj=0;cj<ncy;cj++){const Xr=rowX(loops,(cj+0.5)*r);let qx=0;
+  for(let ci=0;ci<ncx;ci++){const n00=cj*nxc+ci,n10=n00+1,n01=n00+nxc,n11=n01+1,S=segs.get(cj*ncx+ci);
+   if(!S){const xc=(ci+0.5)*r;while(qx<Xr.length&&Xr[qx]<=xc)qx++;if(!(qx&1))continue;
+    Fc.push([vt(n00),vt(n10),vt(n11)],[vt(n00),vt(n11),vt(n01)]);if(sh)Fc.push([vb(n00),vb(n11),vb(n10)],[vb(n00),vb(n01),vb(n11)]);else{const bq=[vb(n00),vb(n01),vb(n11),vb(n10)];bq.bottom=true;Fc.push(bq);}continue;}
+   const x0=ci*r,y0=cj*r,x1=x0+r,y1=y0+r;
+   const tp=id=>{const x=px(id),y=py(id);if(Math.abs(y-y0)<eps)return(x-x0)/r;if(Math.abs(x-x1)<eps)return 1+(y-y0)/r;if(Math.abs(y-y1)<eps)return 2+(x1-x)/r;if(Math.abs(x-x0)<eps)return 3+(y1-y)/r;return -1;};
+   const start=new Map();for(const s of S)start.set(s[0],s);
+   const chains=[];
+   for(const s of S){if(!isB[s[0]-NN])continue;const ids=[s[0]];let c=s,g=0;
+    while(c&&g++<100000){ids.push(c[1]);if(isB[c[1]-NN])break;c=start.get(c[1]);}
+    chains.push({ids,ts:tp(ids[0]),te:tp(ids[ids.length-1]),used:false});}
+   const corner=[n00,n10,n11,n01];   // Parameter 0(=4),1,2,3
+   for(const c0 of chains){if(c0.used)continue;const poly=[];let cur=c0;c0.used=true;let g=0;
+    for(;;){if(g++>1000){fails++;break;}poly.push(...cur.ids);const t=cur.te;let best=null,bd=9;
+     for(const c of chains){if(c.used&&c!==c0)continue;const dd=((c.ts-t)%4+4)%4;if(dd>1e-12&&dd<bd){bd=dd;best=c;}}
+     if(!best){fails++;break;}
+     const cs=[];for(let q=0;q<4;q++){const dd=((q-t)%4+4)%4;if(dd>1e-12&&dd<bd)cs.push([dd,corner[q]]);}cs.sort((u,w)=>u[0]-w[0]);for(const[,id]of cs)poly.push(id);
+     if(best===c0)break;best.used=true;cur=best;}
+    const pxs=new Map(),X={},Y={};for(const id of poly){X[id]=px(id);Y[id]=py(id);}
+    const E=earclip(poly,X,Y);if(!E.ok)fails++;
+    for(const[a,b,c]of E.T){Fc.push([vt(a),vt(b),vt(c)]);const bt=[vb(a),vb(c),vb(b)];bt.bottom=!sh;Fc.push(bt);}}}}
+ for(const[u,w]of allSeg)Fc.push([vb(u),vb(w),vt(w),vt(u)]);   // Wände entlang der Kontur
+ for(let q=0;q<V.length;q+=3){V[q]+=G.ox;V[q+1]+=G.oy;}
+ return{V:Float64Array.from(V),faces:Fc,H,fails};}
+
+async function cScanInside(){try{if(taskRunning())throw new Error('Es läuft bereits ein Vorgang');
+ const L=cProc();if(!L.some(l=>!l.hole))throw new Error('Erst eine Außenkontur abfahren');
+ const res=+$('res').value;if(!(res>0))throw new Error('Auflösung in den Scan-Einstellungen prüfen');
+ const m=2*res;let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+ for(const l of L)if(!l.hole)for(const[x,y]of l.pts){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}
+ const ox=x0-m,oy=y0-m,nx=Math.floor((x1+m-ox)/res+1e-6)+1,ny=Math.floor((y1+m-oy)/res+1e-6)+1,rows=[];let tot=0;
+ for(let j=0;j<ny;j++){const raw=[];   // Abschnitte bei y und y±Rand (Rand auch in Y-Richtung)
+  for(const dy of[-m,-m/2,0,m/2,m]){const X=rowX(L,oy+j*res+dy);
+   for(let q=0;q+1<X.length;q+=2){const a=Math.max(0,Math.ceil((X[q]-m-ox)/res-1e-9)),b=Math.min(nx-1,Math.floor((X[q+1]+m-ox)/res+1e-9));if(a<=b)raw.push([a,b]);}}
+  raw.sort((u,w)=>u[0]-w[0]);const iv=[];
+  for(const[a,b]of raw){if(iv.length&&a<=iv[iv.length-1][1]+1)iv[iv.length-1][1]=Math.max(iv[iv.length-1][1],b);else iv.push([a,b]);}
+  for(const[a,b]of iv)tot+=b-a+1;rows.push([iv.length,...iv.flat()].join(' '));}
+ if(!tot)throw new Error('Keine Fläche innerhalb der Kontur');
+ if(!confirm(`Fläche innerhalb der Kontur scannen:\n${tot.toLocaleString('de-DE')} Punkte statt ${(nx*ny).toLocaleString('de-DE')} im umgebenden Rechteck.\nRaster ${res} mm, Bereich ${(x1-x0).toFixed(1)} × ${(y1-y0).toFixed(1)} mm. Starten?`))return;
+ const q=['res','feed','travel','settle','avg','lat'].map(k=>k+'='+encodeURIComponent($(k).value)).join('&')+
+  `&bidir=${$('bidir').checked?1:0}&fly=${$('fly').checked?1:0}&ox=${ox.toFixed(4)}&oy=${oy.toFixed(4)}&nx=${nx}&ny=${ny}`;
+ const r=await fetch('/api/scanmask?'+q,{method:'POST',headers:{'Content-Type':'text/plain'},body:rows.join('\n')});
+ const t=await r.text();if(!r.ok)throw new Error(t);
+ grid=null;flipX=flipY=false;$('cmask').checked=true;msg('');}catch(e){msg(e.message);}}
+function taskRunning(){return['SCAN','RETURN','PAUSED','FRAME','CONTOUR'].includes(st.state);}
+
+// ---------- Jog: kurz tippen = Schritt, gedrückt halten = Dauerfahrt ----------
+document.querySelectorAll('.jb').forEach(b=>{const dx=+b.dataset.dx,dy=+b.dataset.dy;let t=null,cont=false,ka=null;
+ const post=u=>fetch(u,{method:'POST'}).catch(()=>{});
+ const down=e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId);}catch(x){}cont=false;
+  t=setTimeout(()=>{t=null;cont=true;post(`/api/jogc?dx=${dx}&dy=${dy}&f=${$('jf').value}`);ka=setInterval(()=>post('/api/jogka'),200);},250);};
+ const up=()=>{if(t){clearTimeout(t);t=null;jog(dx,dy);}else if(cont){cont=false;clearInterval(ka);post('/api/jogstop');}};
+ b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up);
+ b.addEventListener('contextmenu',e=>e.preventDefault());});
+
 const TIPS={
  w:'Größe des Scanbereichs in X ab der aktuellen Position (mm). Der Startpunkt ist die linke vordere Ecke.',
  h:'Größe des Scanbereichs in Y ab der aktuellen Position (mm).',
@@ -540,6 +921,8 @@ const TIPS={
  cs:'Glättung der Umrisslinie (mm). Größer = runder, Ecken werden weicher und Löcher etwas kleiner. 0 = ungeglättet.',
  cma:'Konturen kleiner als diese Fläche gelten als Störung und werden weggelassen (mm²).',
  cpv:'Zeigt den Umriss in der Vorschau: Außenkonturen weiß, Löcher türkis.',
+ sht:'0 = das Modell reicht von der Oberfläche bis zur Auflage (Z = 0). Größer 0 = Schale: die Unterseite folgt der Oberfläche in diesem Abstand (senkrecht in Z gemessen) – ein gleichmäßig dickes Formteil für 3MF, STL und STEP. An steilen Flanken ist die Wand quer zur Fläche etwas dünner.',
+ smax:'STEP wird bei vielen Flächen sehr groß und von CAD-Programmen kaum noch verarbeitet. Die Ausdünnung für STEP wird automatisch so erhöht, dass höchstens so viele Flächen entstehen (ca. 1 MB je 1000 Flächen). 3MF und STL bleiben unverändert.',
  dec:'Nur jeder k-te Punkt wird für 3MF, STL und STEP verwendet. Verkleinert große Dateien. Für STEP bei großen Scans 2–4.',
  fn:'Dateiname der Exporte ohne Endung.',
  js:'Weg pro Klick auf eine Pfeiltaste (mm).',
@@ -547,6 +930,22 @@ const TIPS={
  calH:'Tatsächliche Höhe des Endmaßes (mm). Ideal 20–50 mm.',
  calN:'Anzahl gemittelter Messwerte pro Kalibrierpunkt. Mehr = genauer.',
  otaf:'Firmware-Datei wählen: „CoreXY_Scanner.ino.bin“ aus dem build-Ordner (Sketch → Kompilierte Binärdatei exportieren).',
+ ebw:'Nur mit „Kontur als Rand“: In diesem Streifen innerhalb der Kontur werden Kantenartefakte automatisch entfernt – Punkte unter der Kantenhöhe und Punkte, die mehr als 1 mm tiefer liegen als die Punkte weiter innen. Echte Fasen bleiben erhalten. Größer = gründlicher, aber auch echte Stufen nahe am Rand würden geglättet. 0 = aus.',
+ eb:'Nur mit „Kontur als Rand“: Messwerte in diesem Streifen entlang der Kontur werden verworfen und die Oberfläche von innen bis zur Kante fortgesetzt. Entfernt Grate oder Abfälle am Rand durch halb getroffene Kanten. 1–2 Rasterweiten, z. B. 0,3–0,5 mm.',
+ nwr:'Zieht die großräumige Form ab (z. B. ein gewölbtes oder welliges Blatt) und behält nur das feine Relief (Adern, Struktur). Radius etwa so groß wie die Wellen, typisch 10–20 mm. 0 = aus.',
+ nmx:'Skaliert die Höhen so, dass das Teil inkl. Grunddicke genau diese Höhe hat. Ohne „Wölbung entfernen“ wird nur gleichmäßig gestaucht. 0 = aus.',
+ ngd:'Wird unter das (normierte) Relief gesetzt, damit dünne Teile druckbar bleiben. Zählt bei „Max. Höhe“ mit.',
+ zoff:'Dicke einer Unterlage, auf die das Teil gelegt wurde (z. B. damit flache Teile eine erkennbare Kante haben). Wird nach der Teil-Erkennung von allen Höhen abgezogen – Export, Maße und Live-Z beziehen sich dann auf die Unterseite des Teils. Die Mindesthöhe gilt weiter ab Auflage.',
+ cmask:'Nutzt die abgefahrenen Konturen als exakten Rand: alles innerhalb der Außenkontur und außerhalb der Ausschnitte ist Teil (Mindesthöhe wird nicht verwendet). 3MF/STL/STEP bekommen senkrechte, scharfe Kanten entlang der Kontur. Wird bei „Fläche innerhalb scannen“ automatisch gesetzt.',
+ cdir:'In welche Richtung vom Startpunkt aus das Teil gesucht wird. Den Kopf vorher neben das Teil auf die Auflage fahren (bei Innenkontur: in den Ausschnitt).',
+ cstep:'Abstand der Messpunkte entlang der Kante (mm). Kleiner = feinere Details, aber länger. Einschnitte schmaler als die Schrittweite können übersprungen werden. Sinnvoll 0,3–1 mm.',
+ cthr:'Ab dieser Höhe über der Auflage (am Startpunkt gemessen) gilt ein Punkt als Material. Die Kontur liegt auf dieser Höhe.',
+ cref:'Wie oft der Abschnitt zwischen „frei“ und „Material“ halbiert wird, um die Kante genau zu treffen. 2 = Schrittweite/8 genau. Jede Halbierung kostet eine Messung pro Kantenpunkt.',
+ cmax:'Sicherheitsgrenze: so weit darf sich der Kopf vom Startpunkt entfernen (in X und in Y, mm). Wird sie erreicht, bricht die Fahrt ab.',
+ cf:'Verfahrgeschwindigkeit beim Abtasten (mm/s). Bei kleinen Schritten begrenzt meist die Beschleunigung.',
+ cset:'Wartezeit vor jeder Messung (ms).',
+ cavg:'Gemittelte Messwerte pro Punkt. ADS1115: 4–8, ESP32-ADC: 16–32.',
+ csm:'Glättung der abgefahrenen Kontur (mm). 0 = Rohdaten. Wirkt sofort auf Anzeige und Export.',
  pv:'Zeigt statt der Rohabstände die Höhe des Teils mit allen Export-Einstellungen (Z-Null, Mindesthöhe, Fehlstellen, Glättung).'};
 const tipEl=document.createElement('div');tipEl.id='tip';document.body.appendChild(tipEl);
 for(const[id,t]of Object.entries(TIPS)){const el=$(id);if(el)(el.closest('label')||el).dataset.tip=t;}
@@ -562,6 +961,7 @@ document.addEventListener('focusout',hideTip);
 addEventListener('scroll',hideTip,true);
 
 updZ();
+drawC();cInfo();measures();
 poll();
 </script></body></html>
 )rawliteral";

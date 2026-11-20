@@ -1,9 +1,10 @@
-# CoreXY-Scanner, 4 MB Flash: 2x 1.44 MB App (OTA) + 1 MB LittleFS (~480k Punkte)
-# Nur verwenden, wenn der Sketch nicht in "Default 4MB with spiffs" (1.25 MB App) passt.
+# CoreXY-Scanner, ESP32-S3 N16R8 (16 MB Flash)
+# 2x 3 MB App (OTA) + 9,9 MB LittleFS (~4,9 Mio. Punkte, Firmware begrenzt auf MAX_POINTS)
+# Arduino IDE: Flash Size = 16MB (128Mb). Das Menü "Partition Scheme" wird ignoriert.
 # Name,    Type, SubType,  Offset,   Size
 nvs,       data, nvs,      0x9000,   0x5000
 otadata,   data, ota,      0xe000,   0x2000
-app0,      app,  ota_0,    0x10000,  0x170000
-app1,      app,  ota_1,    0x180000, 0x170000
-spiffs,    data, spiffs,   0x2F0000, 0x100000
-coredump,  data, coredump, 0x3F0000, 0x10000
+app0,      app,  ota_0,    0x10000,  0x300000
+app1,      app,  ota_1,    0x310000, 0x300000
+spiffs,    data, spiffs,   0x610000, 0x9E0000
+coredump,  data, coredump, 0xFF0000, 0x10000
