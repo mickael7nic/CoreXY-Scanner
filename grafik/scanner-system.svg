@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" font-family="DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+    </marker>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#b8c2d0" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="960" height="600" fill="#ffffff"/>
+
+  <!-- ================= Draufsicht CoreXY ================= -->
+  <text x="20" y="28" font-size="17" font-weight="bold" fill="#1a3d7c">Draufsicht – CoreXY-Portal</text>
+  <!-- Rahmen -->
+  <rect x="30" y="50" width="440" height="330" rx="6" fill="#f4f6f9" stroke="#4a5568" stroke-width="3"/>
+  <!-- Teil + Scanraster -->
+  <rect x="150" y="150" width="200" height="150" rx="14" fill="#f6c27a" stroke="#c9822b" stroke-width="2"/>
+  <path d="M165 165 H335 V185 H165 V205 H335 V225 H165 V245 H335 V265 H165 V285 H335" fill="none" stroke="#c0392b" stroke-width="1.6" stroke-dasharray="4 3"/>
+  <circle cx="165" cy="165" r="4" fill="#c0392b"/>
+  <text x="250" y="320" font-size="12" text-anchor="middle" fill="#8a5a1a">Teil · Scanraster (Serpentine)</text>
+  <!-- Portal (X-Balken) -->
+  <rect x="55" y="214" width="390" height="32" rx="4" fill="#cfd8e6" stroke="#4a5568" stroke-width="2"/>
+  <!-- Riemen A (blau): Motor A -> links runter -> Portal oben -> Schlitten | Schlitten -> Portal unten -> rechts hoch -> oben zurück -->
+  <path d="M66 80 V221 H226 M274 239 H420 V66 H78" fill="none" stroke="#2d6cdf" stroke-width="2.5"/>
+  <!-- Riemen B (grün): gekreuzt -->
+  <path d="M434 80 V221 H274 M226 239 H80 V74 H422" fill="none" stroke="#27ae60" stroke-width="2.5"/>
+  <!-- Schlitten mit Sensor -->
+  <rect x="226" y="206" width="48" height="48" rx="5" fill="#1a3d7c" stroke="#0f2550" stroke-width="2"/>
+  <circle cx="250" cy="230" r="7" fill="#ff3b30"/>
+  <circle cx="250" cy="230" r="13" fill="none" stroke="#ff3b30" stroke-width="1.5" opacity=".6"/>
+  <!-- Umlenkrollen Portal -->
+  <circle cx="70" cy="230" r="7" fill="#fff" stroke="#4a5568" stroke-width="2"/>
+  <circle cx="430" cy="230" r="7" fill="#fff" stroke="#4a5568" stroke-width="2"/>
+  <!-- Motoren -->
+  <rect x="42" y="58" width="56" height="44" rx="5" fill="#2d6cdf"/>
+  <text x="70" y="85" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">A</text>
+  <rect x="402" y="58" width="56" height="44" rx="5" fill="#27ae60"/>
+  <text x="430" y="85" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">B</text>
+  <text x="70" y="118" font-size="10.5" fill="#2d6cdf" text-anchor="middle">Closed-Loop</text>
+  <text x="430" y="118" font-size="10.5" fill="#27ae60" text-anchor="middle">Closed-Loop</text>
+  <!-- Achsen -->
+  <line x1="40" y1="410" x2="110" y2="410" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+  <line x1="40" y1="410" x2="40" y2="388" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="116" y="414" font-size="13" fill="#4a5568">X</text>
+  <text x="26" y="396" font-size="13" fill="#4a5568" text-anchor="middle">Y</text>
+  <text x="130" y="414" font-size="11.5" fill="#4a5568">A = X + Y   ·   B = X − Y   ·   GT2 / 20 Z → 80 Schritte/mm</text>
+
+  <!-- ================= Seitenansicht Sensor ================= -->
+  <text x="510" y="28" font-size="17" font-weight="bold" fill="#1a3d7c">Seitenansicht – Lasermessung</text>
+  <!-- Sensor -->
+  <rect x="640" y="55" width="150" height="62" rx="6" fill="#1a3d7c"/>
+  <text x="715" y="82" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">HG-C1100</text>
+  <text x="715" y="100" font-size="10.5" fill="#cfe0ff" text-anchor="middle">Laser-Triangulation</text>
+  <rect x="660" y="117" width="18" height="7" fill="#ff3b30"/>
+  <rect x="752" y="117" width="22" height="7" fill="#9fb4d8"/>
+  <!-- Strahlen -->
+  <line x1="669" y1="124" x2="669" y2="262" stroke="#ff3b30" stroke-width="2.5"/>
+  <line x1="669" y1="262" x2="763" y2="124" stroke="#ff8a80" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <circle cx="669" cy="262" r="4" fill="#ff3b30"/>
+  <text x="782" y="142" font-size="11" fill="#c0392b">Empfänger</text>
+  <text x="660" y="142" font-size="11" fill="#c0392b" text-anchor="end">Sender</text>
+  <!-- Teil mit Welle und Stufe -->
+  <path d="M540 330 L540 300 C570 280 600 280 630 300 C650 312 660 270 669 262 C690 250 700 285 720 290 L720 255 L800 255 L800 330 Z" fill="#f6c27a" stroke="#c9822b" stroke-width="2"/>
+  <!-- Auflage -->
+  <rect x="510" y="330" width="420" height="22" fill="url(#hatch)" stroke="#8a94a6" stroke-width="1.5"/>
+  <text x="925" y="370" font-size="11" fill="#4a5568" text-anchor="end">Auflage = Z 0</text>
+  <!-- Bemaßung Messbereich -->
+  <line x1="880" y1="124" x2="880" y2="330" stroke="#4a5568" stroke-width="1.2"/>
+  <line x1="872" y1="124" x2="888" y2="124" stroke="#4a5568" stroke-width="1.2"/>
+  <line x1="872" y1="330" x2="888" y2="330" stroke="#4a5568" stroke-width="1.2"/>
+  <text x="872" y="215" font-size="11" fill="#4a5568" text-anchor="end">65–135 mm</text>
+  <text x="872" y="230" font-size="11" fill="#4a5568" text-anchor="end">Messbereich</text>
+  <!-- Z-Pfeil -->
+  <line x1="560" y1="330" x2="560" y2="290" stroke="#1a3d7c" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="566" y="312" font-size="12" fill="#1a3d7c">Z</text>
+
+  <!-- ================= Blockschaltbild ================= -->
+  <text x="20" y="455" font-size="17" font-weight="bold" fill="#1a3d7c">Signalweg</text>
+  <g font-size="12">
+    <rect x="20" y="478" width="150" height="56" rx="8" fill="#eef3fb" stroke="#2d6cdf" stroke-width="2"/>
+    <text x="95" y="502" text-anchor="middle" font-weight="bold">Browser</text>
+    <text x="95" y="520" text-anchor="middle" font-size="10.5">PC · Tablet · Handy</text>
+
+    <rect x="240" y="478" width="150" height="56" rx="8" fill="#1a3d7c"/>
+    <text x="315" y="502" text-anchor="middle" font-weight="bold" fill="#fff">ESP32-S3</text>
+    <text x="315" y="520" text-anchor="middle" font-size="10.5" fill="#cfe0ff">Webserver · Timer-ISR</text>
+
+    <rect x="460" y="470" width="150" height="34" rx="8" fill="#eaf7ef" stroke="#27ae60" stroke-width="2"/>
+    <text x="535" y="492" text-anchor="middle">Treiber A / B</text>
+    <rect x="460" y="514" width="150" height="34" rx="8" fill="#fff4e5" stroke="#c9822b" stroke-width="2"/>
+    <text x="535" y="536" text-anchor="middle">ADS1115 16 Bit</text>
+
+    <rect x="680" y="514" width="150" height="34" rx="8" fill="#fdecea" stroke="#c0392b" stroke-width="2"/>
+    <text x="755" y="536" text-anchor="middle">HG-C1100 4–20 mA</text>
+    <rect x="680" y="470" width="150" height="34" rx="8" fill="#f4f6f9" stroke="#4a5568" stroke-width="2"/>
+    <text x="755" y="492" text-anchor="middle">Motoren A / B</text>
+
+    <line x1="170" y1="506" x2="238" y2="506" stroke="#4a5568" stroke-width="2" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <text x="204" y="498" text-anchor="middle" font-size="10.5" fill="#4a5568">WLAN</text>
+    <line x1="390" y1="495" x2="458" y2="487" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="424" y="482" text-anchor="middle" font-size="10" fill="#4a5568">STEP/DIR</text>
+    <line x1="458" y1="531" x2="390" y2="520" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="424" y="542" text-anchor="middle" font-size="10" fill="#4a5568">I²C</text>
+    <line x1="610" y1="487" x2="678" y2="487" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+    <line x1="678" y1="531" x2="612" y2="531" stroke="#4a5568" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="645" y="552" text-anchor="middle" font-size="10" fill="#4a5568">Shunt</text>
+
+    <rect x="860" y="470" width="88" height="78" rx="8" fill="#f4f6f9" stroke="#2d6cdf" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="904" y="492" text-anchor="middle" font-size="10.5" font-weight="bold">Export</text>
+    <text x="904" y="508" text-anchor="middle" font-size="10">CSV · 3MF</text>
+    <text x="904" y="522" text-anchor="middle" font-size="10">STL · STEP</text>
+    <text x="904" y="536" text-anchor="middle" font-size="10">DXF · SVG</text>
+  </g>
+  <text x="95" y="560" text-anchor="middle" font-size="10" fill="#4a5568">Auswertung &amp; Export im Browser</text>
+</svg>
