@@ -161,7 +161,8 @@ details.sub summary{font-size:14px;color:#8fc1ff;padding:3px 0}
 <button onclick="cStart(0)">Außenkontur abfahren</button><button onclick="cStart(1)">Innenkontur abfahren</button><br>
 <button onclick="cScanInside()" title="Höhenscan nur innerhalb der Konturen, mit den Scan-Einstellungen (Auflösung, Messart …)">Fläche innerhalb scannen</button><br>
 <button class="gr" onclick="cUndo()">Letzte entfernen</button><button class="gr" onclick="cClear()">Alle löschen</button>
-<button onclick="cExp('dxf')">DXF</button><button onclick="cExp('svg')">SVG</button>
+<button onclick="cExp('dxf')">DXF</button><button onclick="cExp('svg')">SVG</button><button onclick="$('dxff').click()" title="Bearbeiteten Umriss (DXF) wieder als Konturen übernehmen">DXF importieren</button>
+<input id="dxff" type="file" accept=".dxf" style="display:none" onchange="cImport(this.files[0]);this.value=''">
 <div id="cinfo" class="kv"></div>
 </div><div><canvas id="ccv" width="10" height="10"></canvas></div></div>
 </details>
@@ -280,14 +281,29 @@ let fbCache=null;
 function fitBase(){const{nx,ny,res,d}=grid,tol=Math.max(0.01,+$('tol').value),M=maskOn()?maskGrid():null;
  const fk=grid.ver+'|'+nx+'|'+ny+'|'+tol+'|'+(M?mCache.key:'');if(fbCache&&fbCache.k===fk)return fbCache.P;
  const P=fitBase0(nx,ny,res,d,tol,M);fbCache={k:fk,P};return P;}
-// M (Maske): Startauswahl = Punkte außerhalb der Kontur (Auflage-Rand), sonst die 5 % entferntesten
-function fitBase0(nx,ny,res,d,tol,M){const X=[],Y=[],D=[],O=[];
- for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const v=d[j*nx+i];if(isFinite(v)){X.push(i*res);Y.push(j*res);D.push(v);O.push(M?!M[j*nx+i]:false);}}
+// Auflage-Ebene robust (RANSAC): Kandidaten = Punkte außerhalb der Kontur (M) bzw. alle.
+// Gesucht wird die Ebene mit den meisten Punkten im Toleranzband, wobei Punkte DEUTLICH UNTER der Ebene
+// (größerer Abstand = tiefer als die Auflage) stark bestraft werden – Teil-Oberseite und Seitenwände scheiden so aus,
+// auch wenn nur ein schmaler Auflage-Rand gescannt wurde (Fläche innerhalb scannen).
+function fitBase0(nx,ny,res,d,tol,M){const X=[],Y=[],D=[];
+ const add=k=>{const v=d[k];if(isFinite(v)){const i=k%nx;X.push(i*res);Y.push((k-i)/nx*res);D.push(v);}};
+ if(M){for(let k=0;k<d.length;k++)if(!M[k])add(k);}
+ if(D.length<50){X.length=Y.length=D.length=0;for(let k=0;k<d.length;k++)add(k);}
  if(D.length<3)throw new Error('Zu wenig gültige Punkte');
- const s=Float64Array.from(D).sort(),p95=s[Math.floor(0.95*(s.length-1))];
- let P=[0,0,p95],sel=D.map(v=>v>=p95-3*tol);
- if(M&&O.filter(Boolean).length>=3){sel=O;const Q=plane(X,Y,D,sel);if(Q)P=Q;}
- for(let it=0;it<10;it++){const Q=plane(X,Y,D,sel);if(!Q)break;P=Q;sel=D.map((v,k)=>Math.abs(P[0]*X[k]+P[1]*Y[k]+P[2]-v)<tol);}
+ const n=D.length,step=Math.max(1,Math.floor(n/20000));let seed=12345;const rnd=()=>{seed=(seed*1103515245+12345)>>>0;return seed/4294967296;};
+ const band=Math.max(tol,0.05),below=Math.max(5*tol,1.5);let best=null,bs=-Infinity;
+ // Startpunkte bevorzugt aus den entferntesten Punkten ziehen (Auflage = am weitesten weg), falls die Auflage nur wenige % ausmacht
+ const ord=Array.from(D.keys()).sort((p,q)=>D[q]-D[p]),pools=[0.02,0.05,0.2,1].map(f=>Math.max(3,Math.floor(n*f)));
+ for(let it=0;it<400;it++){const m=pools[it&3],a=ord[Math.floor(rnd()*m)],b=ord[Math.floor(rnd()*m)],c=ord[Math.floor(rnd()*m)];
+  const ux=X[b]-X[a],uy=Y[b]-Y[a],uz=D[b]-D[a],vx=X[c]-X[a],vy=Y[c]-Y[a],vz=D[c]-D[a];
+  const cx=uy*vz-uz*vy,cy=uz*vx-ux*vz,cz=ux*vy-uy*vx;if(Math.abs(cz)<1e-6*(Math.hypot(ux,uy)*Math.hypot(vx,vy)+1e-9)||Math.abs(cz)<1e-9)continue;
+  const p0=-cx/cz,p1=-cy/cz;if(Math.abs(p0)>0.2||Math.abs(p1)>0.2)continue;     // max. ~11° Schräglage
+  const p2=D[a]-p0*X[a]-p1*Y[a];let sc=0;
+  for(let k=0;k<n;k+=step){const r=D[k]-(p0*X[k]+p1*Y[k]+p2);if(Math.abs(r)<band)sc++;else if(r>below)sc-=50;}
+  if(sc>bs){bs=sc;best=[p0,p1,p2];}}
+ let P=best;
+ if(!P){const s=Float64Array.from(D).sort();P=[0,0,s[Math.floor(0.95*(n-1))]];}
+ for(let it=0;it<10;it++){const sel=D.map((v,k)=>Math.abs(P[0]*X[k]+P[1]*Y[k]+P[2]-v)<tol);const Q=plane(X,Y,D,sel);if(!Q)break;P=Q;}
  return P;}
 let zP=null;  // Z-Null-Ebene für Live-Z in der Kopfleiste
 function baseP(){const m=$('bm').value;if(m==='manual')return[0,0,+$('dman').value];
@@ -706,8 +722,81 @@ function cPoll(){if(st.cst==null)return;
  if(st.cst===1&&Date.now()-cLastFetch>1000)cFetch(false);
  if((st.cst===2||st.cst===3)&&st.cid!==cLastId)cFetch(true);
  cInfo();if(st.cst===1)drawC();}
+// importierte Konturen (imp) werden nicht nachgeglättet – so wie gezeichnet
 function cProc(){const sg=Math.max(0,+$('csm').value),stp=Math.max(0.05,+$('cstep').value);
- return cLoops.map(L=>{let p=L.pts;if(sg>0)p=smoothLoop(p,sg,stp);p=simplifyLoop(p,0.005);return{pts:p,hole:L.hole,area:area(p)};});}
+ return cLoops.map(L=>{let p=L.pts;if(sg>0&&!L.imp)p=smoothLoop(p,sg,stp);p=simplifyLoop(p,0.005);return{pts:p,hole:L.hole,area:area(p)};});}
+// ---------- DXF-Import: bearbeiteten Umriss wieder als Konturen übernehmen ----------
+// LINE, ARC, CIRCLE, ELLIPSE, LWPOLYLINE/POLYLINE (inkl. Bögen), SPLINE; offene Stücke werden zu geschlossenen Linienzügen verkettet.
+// Außen/Loch ergibt sich aus der Verschachtelung (Loch = liegt in einer ungeraden Zahl anderer Konturen).
+function dxfParse(txt){const L=txt.split(/\r?\n/),G=[];for(let i=0;i+1<L.length;i+=2)G.push([parseInt(L[i].trim(),10),L[i+1].trim()]);
+ let unit=1,i=0;const ents=[];
+ for(;i<G.length;i++){if(G[i][0]===9&&G[i][1]==='$INSUNITS'&&G[i+1]){const u=+G[i+1][1];unit=u===1?25.4:u===2?304.8:u===5?10:u===6?1000:1;}
+  if(G[i][0]===2&&G[i][1]==='ENTITIES')break;}
+ for(i++;i<G.length;){if(G[i][0]!==0){i++;continue;}const t=G[i][1];if(t==='ENDSEC'||t==='EOF')break;const e={t,c:[]};i++;
+  while(i<G.length&&G[i][0]!==0){e.c.push(G[i]);i++;}ents.push(e);}
+ return{ents,unit};}
+const DXF_SEG=0.1;   // max. Sehnenlänge mm für Bögen/Splines
+function arcPts(cx,cy,r,a0,a1){const out=[];let da=a1-a0;const n=Math.max(2,Math.ceil(Math.abs(da)*r/DXF_SEG));for(let k=0;k<=n;k++){const a=a0+da*k/n;out.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}return out;}
+function bulgePts(p,q,b){if(Math.abs(b)<1e-9)return[p,q];const th=4*Math.atan(b),dx=q[0]-p[0],dy=q[1]-p[1],ch=Math.hypot(dx,dy);if(ch<1e-12)return[p];
+ const r=ch/(2*Math.sin(th/2)),h=r*Math.cos(th/2),mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2,cx=mx-h*dy/ch,cy=my+h*dx/ch;
+ const a0=Math.atan2(p[1]-cy,p[0]-cx);return arcPts(cx,cy,Math.abs(r),a0,a0+th);}
+function nurbs(deg,K,P,W){const n=P.length;if(n<2)return P;W=W&&W.length===n?W:P.map(()=>1);
+ const t0=K[deg],t1=K[n],N=Math.max(20,Math.ceil(P.reduce((a,p,k)=>k?a+Math.hypot(p[0]-P[k-1][0],p[1]-P[k-1][1]):0,0)/DXF_SEG)),out=[];
+ for(let s=0;s<=N;s++){const t=Math.min(t1-1e-12,t0+(t1-t0)*s/N);let k=deg;while(k<n-1&&!(t>=K[k]&&t<K[k+1]))k++;
+  const d=[];for(let j=0;j<=deg;j++){const q=P[k-deg+j],w=W[k-deg+j];d.push([q[0]*w,q[1]*w,w]);}
+  for(let r=1;r<=deg;r++)for(let j=deg;j>=r;j--){const ii=k-deg+j,den=K[ii+deg-r+1]-K[ii],a=den?(t-K[ii])/den:0;for(let c=0;c<3;c++)d[j][c]=(1-a)*d[j-1][c]+a*d[j][c];}
+  out.push([d[deg][0]/d[deg][2],d[deg][1]/d[deg][2]]);}
+ return out;}
+// nur Fit-Punkte (Spline durch Punkte): zentripetale Catmull-Rom-Kurve als gute Näherung
+function catmull(F){const cl=F.length>3&&Math.hypot(F[0][0]-F[F.length-1][0],F[0][1]-F[F.length-1][1])<1e-6,Q=cl?F.slice(0,-1):F,n=Q.length,out=[];
+ const at=i=>cl?Q[(i+n)%n]:Q[Math.max(0,Math.min(n-1,i))],m=cl?n:n-1;
+ for(let i=0;i<m;i++){const p0=at(i-1),p1=at(i),p2=at(i+1),p3=at(i+2),dd=(a,b)=>Math.max(1e-9,Math.sqrt(Math.hypot(b[0]-a[0],b[1]-a[1])));
+  const t1=dd(p0,p1),t2=t1+dd(p1,p2),t3=t2+dd(p2,p3),N=Math.max(2,Math.ceil(Math.hypot(p2[0]-p1[0],p2[1]-p1[1])/DXF_SEG));
+  for(let s=0;s<N;s++){const t=t1+(t2-t1)*s/N,L=(a,b,ta,tb)=>[0,1].map(c=>((tb-t)*a[c]+(t-ta)*b[c])/(tb-ta));
+   const A1=L(p0,p1,0,t1),A2=L(p1,p2,t1,t2),A3=L(p2,p3,t2,t3),B1=L(A1,A2,0,t2),B2=L(A2,A3,t1,t3);out.push(L(B1,B2,t1,t2));}}
+ out.push(cl?out[0].slice():Q[n-1].slice());return out;}
+function dxfImportLoops(txt){const{ents,unit}=dxfParse(txt),closed=[],open=[];const g=(e,c)=>{const v=e.c.find(x=>x[0]===c);return v?+v[1]:0;};
+ const D2R=Math.PI/180;
+ for(let k=0;k<ents.length;k++){const e=ents[k];
+  if(e.t==='LINE')open.push([[g(e,10),g(e,20)],[g(e,11),g(e,21)]]);
+  else if(e.t==='ARC'){let a0=g(e,50)*D2R,a1=g(e,51)*D2R;if(a1<=a0)a1+=2*Math.PI;open.push(arcPts(g(e,10),g(e,20),g(e,40),a0,a1));}
+  else if(e.t==='CIRCLE'){const p=arcPts(g(e,10),g(e,20),g(e,40),0,2*Math.PI);p.pop();closed.push(p);}
+  else if(e.t==='ELLIPSE'){const cx=g(e,10),cy=g(e,20),mx=g(e,11),my=g(e,21),ra=g(e,40)||1;let t0=g(e,41),t1=e.c.some(x=>x[0]===42)?g(e,42):2*Math.PI;if(t1<=t0)t1+=2*Math.PI;
+   const R=Math.hypot(mx,my),n=Math.max(16,Math.ceil((t1-t0)*R/DXF_SEG)),p=[];for(let j=0;j<=n;j++){const t=t0+(t1-t0)*j/n,c=Math.cos(t),sn=Math.sin(t)*ra;p.push([cx+mx*c-my*sn,cy+my*c+mx*sn]);}
+   if(Math.abs(t1-t0-2*Math.PI)<1e-6){p.pop();closed.push(p);}else open.push(p);}
+  else if(e.t==='LWPOLYLINE'||e.t==='POLYLINE'){let V=[],cl=(g(e,70)&1)===1;
+   if(e.t==='LWPOLYLINE'){for(const[c,v]of e.c){if(c===10)V.push({x:+v,y:0,b:0});else if(c===20&&V.length)V[V.length-1].y=+v;else if(c===42&&V.length)V[V.length-1].b=+v;}}
+   else{while(k+1<ents.length&&ents[k+1].t==='VERTEX'){k++;const w=ents[k];if(g(w,70)&16)continue;V.push({x:g(w,10),y:g(w,20),b:g(w,42)});}if(k+1<ents.length&&ents[k+1].t==='SEQEND')k++;}
+   if(V.length<2)continue;const p=[[V[0].x,V[0].y]];const nS=cl?V.length:V.length-1;
+   for(let j=0;j<nS;j++){const a=V[j],b=V[(j+1)%V.length],seg=bulgePts([a.x,a.y],[b.x,b.y],a.b);for(let q=1;q<seg.length;q++)p.push(seg[q]);}
+   if(cl){p.pop();closed.push(p);}else open.push(p);}
+  else if(e.t==='SPLINE'){const deg=g(e,71)||3,K=[],P=[],W=[],F=[];let lx=null;
+   for(const[c,v]of e.c){if(c===40)K.push(+v);else if(c===41)W.push(+v);else if(c===10)lx=[+v,0],P.push(lx);else if(c===20&&lx)lx[1]=+v;else if(c===11)F.push([+v,0]);else if(c===21&&F.length)F[F.length-1][1]=+v;}
+   const p=P.length>deg&&K.length===P.length+deg+1?nurbs(deg,K,P,W):F.length>=2?catmull(F):P;if(p.length<2)continue;
+   if(g(e,70)&1){const a=p[0],b=p[p.length-1];if(Math.hypot(a[0]-b[0],a[1]-b[1])<1e-6)p.pop();closed.push(p);}else open.push(p);}}
+ // offene Stücke an den Enden verketten
+ const tol=0.05/unit,eq=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])<=tol;let nOpen=0;
+ const S=open.filter(p=>p.length>=2);
+ while(S.length){let c=S.pop();let grown=true;
+  while(grown&&!eq(c[0],c[c.length-1])){grown=false;
+   for(let j=0;j<S.length;j++){const q=S[j];let add=null;
+    if(eq(c[c.length-1],q[0]))add=q.slice(1);else if(eq(c[c.length-1],q[q.length-1]))add=q.slice(0,-1).reverse();
+    else if(eq(c[0],q[q.length-1])){c=q.slice(0,-1).concat(c);S.splice(j,1);grown=true;break;}
+    else if(eq(c[0],q[0])){c=q.slice(1).reverse().concat(c);S.splice(j,1);grown=true;break;}
+    if(add){c=c.concat(add);S.splice(j,1);grown=true;break;}}}
+  if(c.length>=4&&Math.hypot(c[0][0]-c[c.length-1][0],c[0][1]-c[c.length-1][1])<=Math.max(tol,0.5/unit)){c.pop();closed.push(c);}else nOpen++;}
+ // Einheit: $INSUNITS; ergäbe das ein unplausibel großes Teil (> 2 m), wird mm angenommen (manche Programme setzen die Einheit falsch)
+ let uu=unit;if(unit!==1){let m=0;for(const c of closed)for(const q of c)m=Math.max(m,Math.abs(q[0]),Math.abs(q[1]));if(m*unit>2000)uu=1;}
+ // mm, doppelte Punkte raus, Außen/Loch über Verschachtelung
+ const loops=[];for(const c of closed){const p=[];for(const q of c){const m=[+(q[0]*uu).toFixed(4),+(q[1]*uu).toFixed(4)];const l=p[p.length-1];if(!l||Math.hypot(m[0]-l[0],m[1]-l[1])>1e-4)p.push(m);}
+  if(p.length>=3&&Math.abs(area(p))>1e-3)loops.push(p);}
+ const out=loops.map((p,i)=>{let d=0;for(let j=0;j<loops.length;j++)if(j!==i&&Math.abs(area(loops[j]))>Math.abs(area(p))&&inPoly(p[0],loops[j]))d++;return{pts:p,hole:(d&1)===1,imp:true};});
+ return{loops:out,nOpen,unit:uu,unitIgnored:uu!==unit};}
+async function cImport(f){if(!f)return;try{if(taskRunning())throw new Error('Scan/Kontur läuft – erst beenden');
+ const{loops,nOpen,unit,unitIgnored}=dxfImportLoops(await f.text());if(!loops.length)throw new Error('Keine geschlossenen Konturen in der DXF gefunden'+(nOpen?` (${nOpen} offene Linienzüge)`:''));
+ const no=loops.filter(L=>!L.hole).length,nh=loops.length-no;
+ if(cLoops.length&&!confirm(`„${f.name}“: ${no} Außen-, ${nh} Innenkontur(en).\nDie vorhandenen ${cLoops.length} Konturen werden ersetzt.`))return;
+ cLoops=loops;cSave();drawC();msg(`Importiert: ${no} Außen-, ${nh} Innenkontur(en)`+(nOpen?` – ${nOpen} offene Linienzüge ignoriert (Enden nicht verbunden)`:'')+(unit!==1?` – Einheit aus DXF umgerechnet (×${unit})`:'')+(unitIgnored?' – Einheit der DXF unplausibel, als mm übernommen':''));}catch(e){msg(e.message);}}
 // ---------- Maße ----------
 const perim=P=>{let s=0;for(let k=0;k<P.length;k++){const a=P[k],b=P[(k+1)%P.length];s+=Math.hypot(b[0]-a[0],b[1]-a[1]);}return s;};
 const bbox=P=>{let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(const[x,y]of P){a=Math.min(a,x);b=Math.max(b,x);c=Math.min(c,y);d=Math.max(d,y);}return[a,b,c,d];};
