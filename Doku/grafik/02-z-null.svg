@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 650" width="960" height="650" font-family="DejaVu Sans, Arial, sans-serif"><defs><marker id="a_gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/></marker><marker id="d_gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#4a5568"/></marker><marker id="a_red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker><marker id="d_red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#c0392b"/></marker><marker id="a_blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2d6cdf"/></marker><marker id="d_blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#2d6cdf"/></marker><marker id="a_green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#27ae60"/></marker><marker id="d_green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#27ae60"/></marker><marker id="a_title" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a3d7c"/></marker><marker id="d_title" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1a3d7c"/></marker><marker id="a_orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e67e22"/></marker><marker id="d_orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#e67e22"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#b8c2d0" stroke-width="2"/></pattern></defs><rect width="960" height="650" fill="#ffffff"/><text x="20" y="32" font-size="20" font-weight="bold" fill="#1a3d7c">Z-Null und Teil-Erkennung</text><text x="20" y="54" font-size="12.5" fill="#4a5568">Was ist Auflage, was ist Teil – Querschnitt durch einen Scan</text><rect x="20.0" y="70.0" width="920.0" height="320.0" rx="8" fill="#f4f6f9" stroke="#dde3ec" stroke-width="1" opacity="1"/>
+<text x="34.0" y="94.0" font-size="14.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Z-Null-Ebene, Ebenen-Toleranz, Mindesthöhe</text>
+<g transform="translate(20,70)">
+<path d="M40.0,250.0 L880.0,287.8 L880.0,309.8 L40.0,272.0 Z" fill="url(#hatch)" stroke="none" stroke-width="1.5" opacity="1" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="40.0" y1="250.0" x2="880.0" y2="287.8" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<path d="M40.0,243.0 L880.0,280.8 L880.0,294.8 L40.0,257.0 Z" fill="#dbe7fb" stroke="none" stroke-width="1.5" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="40.0" y1="230.0" x2="880.0" y2="267.8" stroke="#e67e22" stroke-width="1.6" stroke-dasharray="7 4" opacity="1"/>
+<path d="M330.0,263.1 L333.0,237.8 L336.0,228.5 L339.0,222.0 L342.0,217.1 L345.0,213.1 L348.0,209.9 L351.0,207.1 L354.0,204.8 L357.0,202.7 L360.0,200.9 L363.0,199.3 L366.0,197.9 L369.0,196.6 L372.0,195.4 L375.0,194.3 L378.0,193.2 L381.0,192.2 L384.0,191.3 L387.0,190.4 L390.0,189.5 L393.0,188.7 L396.0,187.9 L399.0,187.1 L402.0,186.3 L405.0,185.6 L408.0,184.8 L411.0,184.1 L414.0,183.4 L417.0,182.7 L420.0,182.0 L423.0,181.3 L426.0,180.7 L429.0,180.1 L432.0,179.5 L435.0,178.9 L438.0,178.4 L441.0,177.9 L444.0,177.4 L447.0,177.0 L450.0,176.6 L453.0,176.2 L456.0,175.9 L459.0,175.6 L462.0,175.4 L465.0,175.2 L468.0,175.0 L471.0,174.9 L474.0,174.9 L477.0,174.8 L480.0,174.9 L483.0,174.9 L486.0,175.1 L489.0,175.2 L492.0,175.5 L495.0,175.7 L498.0,176.1 L501.0,176.4 L504.0,176.8 L507.0,177.3 L510.0,177.8 L513.0,178.3 L516.0,178.9 L519.0,179.5 L522.0,180.2 L525.0,180.9 L528.0,181.6 L531.0,182.4 L534.0,183.2 L537.0,184.0 L540.0,184.9 L543.0,185.7 L546.0,186.6 L549.0,187.5 L552.0,188.5 L555.0,189.4 L558.0,190.4 L561.0,191.4 L564.0,192.4 L567.0,193.4 L570.0,194.5 L573.0,195.5 L576.0,196.6 L579.0,197.7 L582.0,198.8 L585.0,200.0 L588.0,201.2 L591.0,202.4 L594.0,203.7 L597.0,205.1 L600.0,206.5 L603.0,208.1 L606.0,209.7 L609.0,211.5 L612.0,213.5 L615.0,215.7 L618.0,218.3 L621.0,221.1 L624.0,224.5 L627.0,228.4 L630.0,233.3 L633.0,239.4 L636.0,247.8 L639.0,262.0 L640.0,277.0 L330.0,263.1 Z" fill="#f6c27a" stroke="#c9822b" stroke-width="2" opacity="1" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="700.0" y="268.7" width="90.0" height="13.0" rx="0" fill="#f9dcb0" stroke="#c9822b" stroke-width="1.5" opacity="1"/>
+<circle cx="50.0" cy="248.4" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="72.0" cy="251.8" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="94.0" cy="251.4" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="116.0" cy="254.3" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="138.0" cy="255.4" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="160.0" cy="251.9" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="182.0" cy="252.5" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="204.0" cy="260.1" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="226.0" cy="256.4" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="248.0" cy="257.2" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="270.0" cy="264.3" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="292.0" cy="261.1" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="314.0" cy="265.0" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="336.0" cy="227.5" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="358.0" cy="201.1" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="380.0" cy="191.6" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="402.0" cy="185.3" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="424.0" cy="180.1" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="446.0" cy="176.1" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="468.0" cy="174.0" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="490.0" cy="174.3" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="512.0" cy="177.1" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="534.0" cy="182.2" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="556.0" cy="188.8" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="578.0" cy="196.4" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="600.0" cy="205.5" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="622.0" cy="221.2" r="3.2" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<circle cx="644.0" cy="277.0" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="666.0" cy="279.3" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="688.0" cy="276.4" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="710.0" cy="266.1" r="3.5" fill="#fff" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="707.0" y1="263.1" x2="713.0" y2="269.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="707.0" y1="269.1" x2="713.0" y2="263.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<circle cx="732.0" cy="267.1" r="3.5" fill="#fff" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="729.0" y1="264.1" x2="735.0" y2="270.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="729.0" y1="270.1" x2="735.0" y2="264.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<circle cx="754.0" cy="268.1" r="3.5" fill="#fff" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="751.0" y1="265.1" x2="757.0" y2="271.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="751.0" y1="271.1" x2="757.0" y2="265.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<circle cx="776.0" cy="269.1" r="3.5" fill="#fff" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="773.0" y1="266.1" x2="779.0" y2="272.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="773.0" y1="272.1" x2="779.0" y2="266.1" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<circle cx="798.0" cy="285.2" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="820.0" cy="288.0" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="842.0" cy="286.3" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="864.0" cy="289.0" r="3.2" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<rect x="404.0" y="40.0" width="52.0" height="30.0" rx="5" fill="#1a3d7c" stroke="#0f2550" stroke-width="2" opacity="1"/>
+<circle cx="430.0" cy="55.0" r="6" fill="#ff3b30" stroke="none" stroke-width="1.5" opacity="1"/>
+<line x1="430.0" y1="70.0" x2="430.0" y2="177.9" stroke="#ff3b30" stroke-width="2" stroke-dasharray="5 3" opacity="1"/>
+<line x1="448.0" y1="72.0" x2="448.0" y2="177.9" stroke="#c0392b" stroke-width="1.2" marker-end="url(#d_red)" marker-start="url(#d_red)" opacity="1"/>
+<text x="456.0" y="100.0" font-size="11" fill="#c0392b" text-anchor="start" font-weight="normal">Messwert d</text>
+<line x1="540.0" y1="272.5" x2="540.0" y2="184.9" stroke="#2d6cdf" stroke-width="1.2" marker-end="url(#d_blue)" marker-start="url(#d_blue)" opacity="1"/>
+<text x="532.0" y="232.5" font-size="11.5" fill="#2d6cdf" text-anchor="end" font-weight="bold">Z = Ebene − d</text>
+<text x="48.0" y="222.4" font-size="11" fill="#e67e22" text-anchor="start" font-weight="normal">Mindesthöhe Teil (darunter = Auflage)</text>
+<line x1="110.0" y1="246.2" x2="110.0" y2="260.1" stroke="#2d6cdf" stroke-width="1.2" marker-end="url(#d_blue)" marker-start="url(#d_blue)" opacity="1"/>
+<text x="118.0" y="291.1" font-size="11" fill="#2d6cdf" text-anchor="start" font-weight="normal">Ebenen-Toleranz: Punkte in diesem Band zählen zur Auflage</text>
+<text x="745.0" y="235.7" font-size="11" fill="#c0392b" text-anchor="middle" font-weight="bold">zu flach</text>
+<text x="745.0" y="248.7" font-size="10.5" fill="#c0392b" text-anchor="middle" font-weight="normal">(unter Mindesthöhe)</text>
+<text x="470.0" y="309.4" font-size="11" fill="#4a5568" text-anchor="middle" font-weight="normal">Auflage – Z = 0 ist die Ebene, die durch die Auflagepunkte gefittet wird (Schräglage wird ausgeglichen)</text>
+<circle cx="565.0" cy="36.0" r="3.5" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<text x="580.0" y="40.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Auflage (Ebenen-Fit)</text>
+<circle cx="722.6" cy="36.0" r="3.5" fill="#c0392b" stroke="none" stroke-width="1.5" opacity="1"/>
+<text x="737.6" y="40.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Teil</text>
+<circle cx="786.1" cy="36.0" r="4.0" fill="#fff" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="782.6" y1="32.5" x2="789.6" y2="39.5" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<line x1="782.6" y1="39.5" x2="789.6" y2="32.5" stroke="#c0392b" stroke-width="1.2" opacity="1"/>
+<text x="801.1" y="40.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">weggelassen</text>
+</g>
+<rect x="20.0" y="405.0" width="450.0" height="235.0" rx="8" fill="#f4f6f9" stroke="#dde3ec" stroke-width="1" opacity="1"/>
+<text x="34.0" y="429.0" font-size="14.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Höhen-Offset (Unterlage abziehen)</text>
+<g transform="translate(20,405)">
+<rect x="20.0" y="150.0" width="195.0" height="14.0" rx="0" fill="url(#hatch)" stroke="none" stroke-width="1.5" opacity="1"/>
+<line x1="20.0" y1="150.0" x2="215.0" y2="150.0" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<rect x="55.0" y="120.0" width="125.0" height="30.0" rx="0" fill="#d9dee6" stroke="#4a5568" stroke-width="1.5" opacity="1"/>
+<rect x="70.0" y="108.0" width="95.0" height="12.0" rx="0" fill="#f6c27a" stroke="#c9822b" stroke-width="1.5" opacity="1"/>
+<text x="117.0" y="140.0" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="normal">Unterlage</text>
+<line x1="194.0" y1="120.0" x2="194.0" y2="150.0" stroke="#4a5568" stroke-width="1.2" marker-end="url(#d_gray)" marker-start="url(#d_gray)" opacity="1"/>
+<text x="198.0" y="139.0" font-size="11" fill="#4a5568" text-anchor="start" font-weight="normal">Offset</text>
+<text x="117.0" y="55.0" font-size="12" fill="#1a3d7c" text-anchor="middle" font-weight="bold">beim Scan</text>
+<text x="117.0" y="72.0" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="normal">flaches Teil auf Unterlage:</text>
+<text x="117.0" y="85.0" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="normal">Kante deutlich über Mindesthöhe</text>
+<line x1="222.0" y1="128.0" x2="250.0" y2="128.0" stroke="#4a5568" stroke-width="2" marker-end="url(#a_gray)" opacity="1"/>
+<rect x="260.0" y="150.0" width="175.0" height="14.0" rx="0" fill="url(#hatch)" stroke="none" stroke-width="1.5" opacity="1"/>
+<line x1="260.0" y1="150.0" x2="435.0" y2="150.0" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<rect x="300.0" y="138.0" width="95.0" height="12.0" rx="0" fill="#f6c27a" stroke="#c9822b" stroke-width="1.5" opacity="1"/>
+<line x1="410.0" y1="138.0" x2="410.0" y2="150.0" stroke="#4a5568" stroke-width="1.2" marker-end="url(#d_gray)" marker-start="url(#d_gray)" opacity="1"/>
+<text x="347.0" y="55.0" font-size="12" fill="#1a3d7c" text-anchor="middle" font-weight="bold">im Export</text>
+<text x="347.0" y="72.0" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="normal">Offset abgezogen:</text>
+<text x="347.0" y="85.0" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="normal">Unterseite des Teils = Z 0</text>
+<text x="14.0" y="190.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Wird erst nach der Teil-Erkennung abgezogen. Export, Maße und Live-Z</text>
+<text x="14.0" y="204.2" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">beziehen sich dann auf die Unterseite des Teils.</text>
+</g>
+<rect x="490.0" y="405.0" width="450.0" height="235.0" rx="8" fill="#f4f6f9" stroke="#dde3ec" stroke-width="1" opacity="1"/>
+<text x="504.0" y="429.0" font-size="14.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Z-Null (Auflagefläche)</text>
+<g transform="translate(490,405)">
+<line x1="20.0" y1="80.0" x2="110.0" y2="68.0" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<circle cx="24.0" cy="80.0" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="41.0" cy="75.9" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="58.0" cy="75.7" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="75.0" cy="72.9" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="92.0" cy="69.7" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<circle cx="109.0" cy="66.6" r="2.6" fill="#fff" stroke="#4a5568" stroke-width="1.2" opacity="1"/>
+<text x="125.0" y="62.0" font-size="11.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Auto: Ebene fitten</text>
+<text x="125.0" y="77.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Ebene durch alle Auflagepunkte – gleicht</text>
+<text x="125.0" y="90.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Schräglage aus. Empfohlen.</text>
+<line x1="20.0" y1="131.0" x2="110.0" y2="131.0" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<circle cx="28.0" cy="131.0" r="5" fill="none" stroke="#ff3b30" stroke-width="2" opacity="1"/>
+<line x1="28.0" y1="107.0" x2="28.0" y2="125.0" stroke="#ff3b30" stroke-width="1.6" stroke-dasharray="4 3" opacity="1"/>
+<text x="125.0" y="117.0" font-size="11.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Messwert am Startpunkt</text>
+<text x="125.0" y="132.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">Abstand am Startpunkt = Z 0. Startpunkt</text>
+<text x="125.0" y="145.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">muss auf der Auflage liegen.</text>
+<line x1="20.0" y1="186.0" x2="110.0" y2="186.0" stroke="#4a5568" stroke-width="2" opacity="1"/>
+<line x1="65.0" y1="162.0" x2="65.0" y2="185.0" stroke="#2d6cdf" stroke-width="1.2" marker-end="url(#d_blue)" marker-start="url(#d_blue)" opacity="1"/>
+<text x="72.0" y="174.0" font-size="10" fill="#2d6cdf" text-anchor="start" font-weight="normal">100 mm</text>
+<text x="125.0" y="172.0" font-size="11.5" fill="#1a3d7c" text-anchor="start" font-weight="bold">Manueller Abstand</text>
+<text x="125.0" y="187.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">fester Sensorabstand der Auflage in mm</text>
+<text x="125.0" y="200.0" font-size="10.5" fill="#4a5568" text-anchor="start" font-weight="normal">(z. B. nach Kalibrierung).</text>
+</g></svg>
